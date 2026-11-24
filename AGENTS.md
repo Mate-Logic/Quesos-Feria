@@ -6,8 +6,8 @@ Identidad visual:
 
 - Colores de Mercados Bonaerenses: rosa `#e81f76` y celeste `#00AEC3`, normalmente en degradé. Están definidos como variables en `src/styles/global.css`.
 - Tipografía: Encode Sans, la misma de Mercados Bonaerenses. Se sirve desde el propio sitio con la API de fuentes de Astro.
-- Logos en `public/img/`: `mb-logo-blanco.webp` (Mercados Bonaerenses, en blanco para usar sobre el degradé) y `huella-pampa.jpg` (logo del productor, sacado de su Instagram; solo está en 150×150 px, así que hay que reemplazarlo cuando haya una versión en alta resolución).
-- La pantalla de carga e inicio (`src/components/Splash.astro`) muestra los dos logos.
+- Logos en `public/img/`: `mb-logo-blanco.webp` (Mercados Bonaerenses, en blanco para usar sobre el degradé) y `huella-pampa.jpg` (logo del productor, sacado de su Instagram; solo está en 150×150 px, así que hay que reemplazarlo cuando haya una versión en alta resolución) `oliverio.jpg` (Oliverio Quesos Artesanales, 320×320 px, achicado del original de 1034×1034), `mama-mecha.jpg` (Mamá Mecha, recortado del cartel de su web: el original es de 92×92 px, así que conviene reemplazarlo si consiguen uno mejor) y `milkey.png` (Milkey, sacado de milkey.com.ar).
+- La pantalla de carga e inicio (`src/components/Splash.astro`) muestra los logos de los cuatro productores (Huella Pampa, Oliverio, Mamá Mecha y Milkey) en una grilla de 2×2 y el de Mercados Bonaerenses abajo.
 - Los íconos de la PWA (`public/pwa-*.png`, `maskable-icon-512x512.png`, `apple-touch-icon-180x180.png`, `favicon.ico`) usan la bolsa de Mercados Bonaerenses sobre el degradé.
 
 ## Reglas para agentes

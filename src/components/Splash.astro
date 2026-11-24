@@ -5,8 +5,19 @@
 
 <div id="splash" class="splash" role="status" aria-live="polite" aria-label="Cargando la aplicación">
 	<div class="marca">
-		<div class="logo-productor">
-			<img src="/img/huella-pampa.jpg" alt="Huella Pampa" width="150" height="150" />
+		<div class="logos-productor">
+			<div class="logo-productor">
+				<img src="/img/huella-pampa.jpg" alt="Huella Pampa" width="150" height="150" />
+			</div>
+			<div class="logo-productor">
+				<img src="/img/oliverio.jpg" alt="Oliverio Quesos Artesanales" width="320" height="320" />
+			</div>
+			<div class="logo-productor">
+				<img src="/img/mama-mecha.jpg" alt="Mamá Mecha" width="184" height="184" />
+			</div>
+			<div class="logo-productor">
+				<img src="/img/milkey.png" alt="Milkey" width="320" height="320" />
+			</div>
 		</div>
 		<p class="app">Ventas de Feria</p>
 		<p class="productor">Lácteos Huella Pampa · Chivilcoy</p>
@@ -89,21 +100,29 @@
 		animation: entrar 0.6s ease-out both;
 	}
 
+	/* Cuatro productores en una grilla de 2×2: entra mejor en el celular vertical. */
+	.logos-productor {
+		display: grid;
+		grid-template-columns: repeat(2, auto);
+		gap: 1rem;
+		margin-bottom: 1rem;
+	}
+
 	.logo-productor {
-		width: 160px;
+		width: min(120px, 34vw);
 		aspect-ratio: 1;
 		border-radius: 50%;
 		background: #fff;
 		display: grid;
 		place-items: center;
 		overflow: hidden;
-		margin-bottom: 1rem;
 		box-shadow: 0 12px 32px rgb(0 0 0 / 0.18);
 	}
 
 	.logo-productor img {
-		width: 150px;
-		height: 150px;
+		width: 94%;
+		height: 94%;
+		object-fit: contain;
 	}
 
 	.app {

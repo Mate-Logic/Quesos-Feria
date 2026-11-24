@@ -49,8 +49,11 @@ El service worker **no funciona en modo dev**, así que el soporte offline se pr
 /
 ├── public/
 │   ├── img/
-│   │   ├── huella-pampa.jpg        # logo del productor
-│   │   └── mb-logo-blanco.webp     # logo de Mercados Bonaerenses (blanco)
+│   │   ├── huella-pampa.jpg        # logo de Huella Pampa
+│   │   ├── mama-mecha.jpg          # logo de Mamá Mecha
+│   │   ├── mb-logo-blanco.webp     # logo de Mercados Bonaerenses (blanco)
+│   │   ├── milkey.png              # logo de Milkey
+│   │   └── oliverio.jpg            # logo de Oliverio Quesos Artesanales
 │   ├── favicon.ico
 │   ├── apple-touch-icon-180x180.png
 │   ├── pwa-192x192.png
@@ -58,7 +61,7 @@ El service worker **no funciona en modo dev**, así que el soporte offline se pr
 │   └── maskable-icon-512x512.png
 ├── src/
 │   ├── components/
-│   │   └── Splash.astro            # pantalla de carga con los dos logos
+│   │   └── Splash.astro            # pantalla de carga con los logos
 │   ├── layouts/
 │   │   └── Layout.astro            # <head>, manifest, fuente y registro del SW
 │   ├── pages/
@@ -85,7 +88,7 @@ Cuando se agrega un recurso nuevo, hay que verificar que quede cubierto por la c
 
 - **Colores** de Mercados Bonaerenses: rosa `#e81f76` y celeste `#00AEC3`, normalmente en degradé. Están definidos como variables en `src/styles/global.css`.
 - **Tipografía**: Encode Sans, la misma que usa Mercados Bonaerenses.
-- **Logos**: el de Huella Pampa salió de su Instagram y solo está en 150×150 px; hay que reemplazarlo cuando haya una versión en alta resolución.
+- **Logos**: el de Huella Pampa salió de su Instagram y solo está en 150×150 px, y el de Mamá Mecha se recortó de un cartel de su web (92×92 px); hay que reemplazarlos cuando haya versiones en alta resolución.
 - **Íconos de la app**: la bolsa de Mercados Bonaerenses sobre el degradé.
 
 ## Cómo contribuir
