@@ -1,43 +1,96 @@
-# Astro Starter Kit: Minimal
+# Ventas de Feria · Lácteos Huella Pampa
+
+Aplicación para anotar las ventas de **Lácteos Huella Pampa**, productor de quesos de Chivilcoy, en los puestos de los [Mercados Bonaerenses](https://mi.mda.gba.gob.ar/mercados/bonaerenses/v2/productor/1ecf3c9f-f629-661a-9f05-d15c5b752137), la feria de la Provincia de Buenos Aires.
+
+Se usa desde el celular, en el puesto, muchas veces sin señal. Por eso es una **Progressive Web App (PWA) instalable que funciona sin conexión**: después de abrirla una vez con internet, se puede usar en modo avión.
+
+> **Estado:** en desarrollo. Ya están la base de la PWA, la pantalla de carga y la página de inicio. El registro de ventas todavía no está implementado.
+
+## Tecnologías
+
+- [Astro](https://astro.build) 7
+- [`@vite-pwa/astro`](https://vite-pwa-org.netlify.app/frameworks/astro) (Workbox) para el service worker y el manifest
+- [Bun](https://bun.sh) como gestor de paquetes
+- Node.js 22.23.4 o superior
+
+## Cómo levantar el proyecto
 
 ```sh
-bun create astro@latest -- --template minimal
+bun install
+bun run dev
 ```
 
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
+El servidor de desarrollo queda en `http://localhost:4321`.
 
-## 🚀 Project Structure
+### Comandos
 
-Inside of your Astro project, you'll see the following folders and files:
+| Comando           | Qué hace                                                    |
+| :---------------- | :---------------------------------------------------------- |
+| `bun install`     | Instala las dependencias                                    |
+| `bun run dev`     | Levanta el servidor de desarrollo en `localhost:4321`       |
+| `bun run build`   | Genera el sitio de producción en `./dist/`                  |
+| `bun run preview` | Sirve el build localmente para probarlo antes de publicarlo |
+| `bun astro ...`   | Ejecuta comandos de la CLI de Astro (`astro check`, etc.)   |
+
+> Usá `bun run build` y no `bun build`: este último es el bundler de Bun, no el script del proyecto.
+
+## Probar el modo sin conexión
+
+El service worker **no funciona en modo dev**, así que el soporte offline se prueba siempre sobre el build:
+
+1. `bun run build && bun run preview`
+2. Abrir la app en el navegador y esperar a que termine de cargar.
+3. En las DevTools, pestaña *Network* (o *Application → Service workers*), activar **Offline**.
+4. Recargar y navegar por la app: todo tiene que seguir funcionando. Las rutas que no estén en caché muestran la página de respaldo (`/404`).
+
+## Estructura
 
 ```text
 /
 ├── public/
+│   ├── img/
+│   │   ├── huella-pampa.jpg        # logo del productor
+│   │   └── mb-logo-blanco.webp     # logo de Mercados Bonaerenses (blanco)
+│   ├── favicon.ico
+│   ├── apple-touch-icon-180x180.png
+│   ├── pwa-192x192.png
+│   ├── pwa-512x512.png
+│   └── maskable-icon-512x512.png
 ├── src/
-│   └── pages/
-│       └── index.astro
-└── package.json
+│   ├── components/
+│   │   └── Splash.astro            # pantalla de carga con los dos logos
+│   ├── layouts/
+│   │   └── Layout.astro            # <head>, manifest, fuente y registro del SW
+│   ├── pages/
+│   │   ├── index.astro             # inicio
+│   │   └── 404.astro               # página de respaldo offline
+│   ├── styles/
+│   │   └── global.css              # variables de color y estilos base
+│   └── pwa.ts                      # registra el service worker
+├── astro.config.mjs                # fuentes y configuración de la PWA
+└── AGENTS.md                       # reglas para agentes de IA
 ```
 
-Astro looks for `.astro` or `.md` files in the `src/pages/` directory. Each page is exposed as a route based on its file name.
+## PWA y modo offline
 
-There's nothing special about `src/components/`, but that's where we like to put any Astro/React/Vue/Svelte/Preact components.
+- El service worker se genera con Workbox y **precachea todo el build** (HTML, JS, CSS, imágenes, íconos y fuentes).
+- Se actualiza solo (`registerType: 'autoUpdate'`): cuando hay una versión nueva, se activa y la página se recarga.
+- Si se navega a una ruta que no está en caché, se muestra `/404` como respaldo.
+- No se carga nada desde CDNs ni dominios de terceros: la fuente Encode Sans se descarga en el build con la API de fuentes de Astro y se sirve desde el propio sitio.
+- Los datos que se generen (ventas, etc.) se van a guardar en el dispositivo.
 
-Any static assets, like images, can be placed in the `public/` directory.
+Cuando se agrega un recurso nuevo, hay que verificar que quede cubierto por la caché (ver `globPatterns` en `astro.config.mjs`).
 
-## 🧞 Commands
+## Identidad visual
 
-All commands are run from the root of the project, from a terminal:
+- **Colores** de Mercados Bonaerenses: rosa `#e81f76` y celeste `#00AEC3`, normalmente en degradé. Están definidos como variables en `src/styles/global.css`.
+- **Tipografía**: Encode Sans, la misma que usa Mercados Bonaerenses.
+- **Logos**: el de Huella Pampa salió de su Instagram y solo está en 150×150 px; hay que reemplazarlo cuando haya una versión en alta resolución.
+- **Íconos de la app**: la bolsa de Mercados Bonaerenses sobre el degradé.
 
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `bun install`             | Installs dependencies                            |
-| `bun dev`             | Starts local dev server at `localhost:4321`      |
-| `bun build`           | Build your production site to `./dist/`          |
-| `bun preview`         | Preview your build locally, before deploying     |
-| `bun astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `bun astro -- --help` | Get help using the Astro CLI                     |
+## Cómo contribuir
 
-## 👀 Want to learn more?
+Las reglas completas están en [`AGENTS.md`](AGENTS.md). En resumen:
 
-Feel free to check [our documentation](https://docs.astro.build) or jump into our [Discord server](https://astro.build/chat).
+- Los commits siguen [Conventional Commits](https://www.conventionalcommits.org/es/v1.0.0/) con la descripción en español y en modo imperativo, por ejemplo `feat(ventas): agrega el formulario de carga`.
+- Todo cambio tiene que seguir funcionando sin conexión y se prueba con `build` + `preview` en modo offline antes de darlo por terminado.
