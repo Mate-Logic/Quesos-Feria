@@ -1,0 +1,39 @@
+:root {
+	--rosa: #e81f76;
+	--celeste: #00aec3;
+	--degrade: linear-gradient(160deg, var(--rosa) 0%, var(--celeste) 100%);
+	--texto: #1d1d1f;
+	--texto-suave: #5b5b66;
+	--fondo: #f5f5f5;
+	--superficie: #ffffff;
+	--radio: 16px;
+
+	font-family: var(--font-encode-sans), system-ui, sans-serif;
+	color: var(--texto);
+	background: var(--fondo);
+	-webkit-text-size-adjust: 100%;
+	-webkit-tap-highlight-color: transparent;
+}
+
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+	margin: 0;
+	padding: 0;
+}
+
+html,
+body {
+	min-height: 100%;
+}
+
+body {
+	min-height: 100dvh;
+	overscroll-behavior: none;
+}
+
+img {
+	display: block;
+	max-width: 100%;
+}

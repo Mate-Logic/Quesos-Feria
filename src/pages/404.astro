@@ -1,0 +1,41 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="Página no encontrada · Ventas de Feria">
+	<main class="vacio">
+		<h1>No encontramos esta página</h1>
+		<p>Puede que no exista o que no esté disponible sin conexión.</p>
+		<a href="/">Volver al inicio</a>
+	</main>
+</Layout>
+
+<style>
+	.vacio {
+		min-height: 100dvh;
+		display: grid;
+		place-content: center;
+		justify-items: center;
+		gap: 0.75rem;
+		padding: 2rem 1.5rem;
+		text-align: center;
+	}
+
+	h1 {
+		font-size: 1.4rem;
+	}
+
+	p {
+		color: var(--texto-suave);
+	}
+
+	a {
+		margin-top: 0.5rem;
+		padding: 0.75rem 1.5rem;
+		border-radius: 999px;
+		background: var(--rosa);
+		color: #fff;
+		font-weight: 600;
+		text-decoration: none;
+	}
+</style>
