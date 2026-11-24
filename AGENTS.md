@@ -45,6 +45,20 @@ Antes de escribir, modificar o revisar código que dependa de una librería, fra
 - Se debe tener en cuenta la versión instalada del proyecto (ver `package.json` y `bun.lock`).
 - Solo si Context7 no tiene la librería o la información necesaria se recurre a la documentación oficial (ver la sección *Documentation* más abajo), y se debe dejar indicado.
 
+### 3. El proyecto es una PWA que funciona offline
+
+Este proyecto es, sí o sí, una **Progressive Web App instalable que funciona sin conexión**. Está pensada para usarse en una feria, donde la señal puede ser mala o nula, así que no es un agregado opcional: todo cambio se diseña y se revisa con esto en mente.
+
+- **Offline primero**: cualquier página o funcionalidad nueva debe funcionar sin conexión una vez que la app se cargó por primera vez. Si algo no puede funcionar offline (por ejemplo, enviar datos a un servidor), la interfaz debe indicarlo con claridad y no romperse ni quedar en blanco.
+- **Service worker y caché**: todos los recursos necesarios (HTML, CSS, JS, fuentes, imágenes, íconos y datos) se precachean o se cachean con una estrategia explícita. Cuando se agrega un recurso nuevo, hay que verificar que quede cubierto por la caché.
+- **Sin dependencias externas en tiempo de ejecución**: no se cargan fuentes, scripts, estilos ni imágenes desde CDNs o dominios de terceros. Todo se sirve desde el propio sitio (`public/` o el bundle) para que quede en caché.
+- **Datos locales**: los datos que el usuario genera o necesita offline (pedidos, carrito, ventas, etc.) se guardan en el dispositivo (IndexedDB o `localStorage` según el tamaño) y, si existe un servidor, se sincronizan al recuperar la conexión sin perder información.
+- **Manifest**: se mantiene un web app manifest completo (`name`, `short_name`, `start_url`, `display: standalone`, `theme_color`, `background_color` e íconos de 192 y 512 px, incluido uno `maskable`).
+- **Página de respaldo offline**: debe existir una página de respaldo para cuando se navega a una ruta que no está en caché.
+- **Actualizaciones**: cuando se publica una versión nueva, el service worker se actualiza sin dejar a los usuarios con una versión vieja rota.
+- **Verificación**: antes de dar un cambio por terminado se prueba con `astro build` + `astro preview` y la red en modo *Offline* en las DevTools, recargando y navegando por la app. El modo dev no sirve para probar el service worker.
+- **Herramientas**: la opción de referencia es la integración [`@vite-pwa/astro`](https://vite-pwa-org.netlify.app/frameworks/astro) (Workbox). Antes de usarla o cambiarla, se consulta Context7 (regla 2) y se confirma que sea compatible con la versión de Astro instalada.
+
 ## Development
 
 When starting the dev server, use background mode:
