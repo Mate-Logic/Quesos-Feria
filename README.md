@@ -4,7 +4,15 @@ Aplicación para anotar las ventas de **Lácteos Huella Pampa**, productor de qu
 
 Se usa desde el celular, en el puesto, muchas veces sin señal. Por eso es una **Progressive Web App (PWA) instalable que funciona sin conexión**: después de abrirla una vez con internet, se puede usar en modo avión.
 
-> **Estado:** en desarrollo. Ya están la base de la PWA, la pantalla de carga y la página de inicio. El registro de ventas todavía no está implementado.
+> **Estado:** en desarrollo. Ya se pueden anotar ventas leyendo la foto del ticket de la balanza (o a mano), ver el resumen del día y exportar todo a CSV, sin conexión.
+
+## Qué hace
+
+- **Escanear ticket**: en el celular se abre la cámara con un recuadro para encuadrar la etiqueta de la balanza. También se puede elegir una foto de la galería (en la PC, solo esa opción).
+- **Lectura sin conexión**: el OCR ([Tesseract.js](https://github.com/naptha/tesseract.js)) corre en el celular. Lee producto, peso, precio por kilo y total, y muestra todo para revisarlo antes de guardar.
+- **Varias marcas**: en el puesto venden Huella Pampa, Oliverio, Mamá Mecha y Milkey, cada una con su balanza y su formato de ticket. Cada venta se anota con su marca.
+- **Lista de ventas** agrupada por día, con el total del día y por marca. Se pueden editar, y borrar con opción de deshacer.
+- **Exportar** las ventas a CSV (para Excel o Google Sheets), compartiéndolas o descargándolas.
 
 ## Tecnologías
 
@@ -30,7 +38,9 @@ El servidor de desarrollo queda en `http://localhost:4321`.
 | `bun run dev`     | Levanta el servidor de desarrollo en `localhost:4321`       |
 | `bun run build`   | Genera el sitio de producción en `./dist/`                  |
 | `bun run preview` | Sirve el build localmente para probarlo antes de publicarlo |
-| `bun astro ...`   | Ejecuta comandos de la CLI de Astro (`astro check`, etc.)   |
+| `bun run test`    | Corre los tests (`bun test`)                                |
+| `bun run check`   | Chequea los tipos con `astro check`                         |
+| `bun astro ...`   | Ejecuta comandos de la CLI de Astro                         |
 
 > Usá `bun run build` y no `bun build`: este último es el bundler de Bun, no el script del proyecto.
 
@@ -42,6 +52,20 @@ El service worker **no funciona en modo dev**, así que el soporte offline se pr
 2. Abrir la app en el navegador y esperar a que termine de cargar.
 3. En las DevTools, pestaña *Network* (o *Application → Service workers*), activar **Offline**.
 4. Recargar y navegar por la app: todo tiene que seguir funcionando. Las rutas que no estén en caché muestran la página de respaldo (`/404`).
+
+## Lectura de tickets
+
+Los tickets cambian según la balanza de cada marca: el orden, las palabras, los decimales; algunos traen código de barras y otros no. Por eso el lector **no depende del diseño del ticket ni del código de barras**, sino de lo que tiene cualquier ticket de venta por peso:
+
+1. **Palabras clave**: PESO, NETO, PRECIO, $/KG, TOTAL, IMPORTE, A PAGAR, etc. Se buscan de forma aproximada, porque el OCR se equivoca en alguna letra. Se ignoran los renglones de TARA, fecha, hora, lote y los códigos largos.
+2. **La cuenta**: peso × precio por kilo = total. Entre todos los números leídos se busca el trío que la cumple. Si cierra, la lectura queda *verificada*. Si solo se leyeron dos, se calcula el tercero y se avisa para revisarlo.
+3. **Lo ya cargado**: los productos que se guardan quedan como conocidos (nombre, marca y precio). En el próximo ticket ayudan a reconocer el nombre aunque esté mal leído, o a deducirlo por el precio.
+
+Antes del OCR, la foto se prepara (`src/lib/tickets/imagen.ts`). Se busca la etiqueta (la zona blanca y sin color), se recorta, se blanquea el fondo y se pasa a blanco y negro con un umbral adaptativo. Después se prueban las cuatro orientaciones y se hacen varias pasadas del OCR hasta que la cuenta cierre.
+
+Tesseract.js, su núcleo en WebAssembly y el modelo de español (unos 15 MB en total) se copian a `public/ocr/` en cada build (`integraciones/ocr-offline.mjs`) y el service worker los precachea. No se baja nada de un CDN.
+
+Las fotos de `fotos_prueba/` son tickets reales con los valores que se tienen que leer. Los tests (`tests/parser.test.ts`) usan las lecturas del OCR de esas fotos. Para sumar marcas o balanzas nuevas, conviene agregar fotos ahí.
 
 ## Estructura
 
@@ -59,14 +83,26 @@ El service worker **no funciona en modo dev**, así que el soporte offline se pr
 │   ├── pwa-192x192.png
 │   ├── pwa-512x512.png
 │   └── maskable-icon-512x512.png
+├── fotos_prueba/                   # fotos reales de tickets para probar la lectura
+├── integraciones/
+│   └── ocr-offline.mjs             # copia Tesseract.js a public/ocr/ para usarlo sin conexión
+├── tests/                          # tests del lector de tickets (bun test)
 ├── src/
 │   ├── components/
+│   │   ├── Camara.astro            # cámara con recuadro para encuadrar el ticket
+│   │   ├── Revision.astro          # hoja para revisar y guardar una venta
 │   │   └── Splash.astro            # pantalla de carga con los logos
 │   ├── layouts/
 │   │   └── Layout.astro            # <head>, manifest, fuente y registro del SW
 │   ├── pages/
 │   │   ├── index.astro             # inicio
 │   │   └── 404.astro               # página de respaldo offline
+│   ├── lib/
+│   │   ├── tickets/                # lectura de tickets: imagen, OCR y parser
+│   │   ├── ventas/                 # IndexedDB y exportación a CSV
+│   │   ├── ui/                     # cámara, hoja de revisión y lista
+│   │   ├── formato.ts              # números y fechas en formato argentino
+│   │   └── marcas.ts               # marcas que se venden en el puesto
 │   ├── styles/
 │   │   └── global.css              # variables de color y estilos base
 │   └── pwa.ts                      # registra el service worker
@@ -80,7 +116,8 @@ El service worker **no funciona en modo dev**, así que el soporte offline se pr
 - Se actualiza solo (`registerType: 'autoUpdate'`): cuando hay una versión nueva, se activa y la página se recarga.
 - Si se navega a una ruta que no está en caché, se muestra `/404` como respaldo.
 - No se carga nada desde CDNs ni dominios de terceros: la fuente Encode Sans se descarga en el build con la API de fuentes de Astro y se sirve desde el propio sitio.
-- Los datos que se generen (ventas, etc.) se van a guardar en el dispositivo.
+- Las ventas y los productos conocidos se guardan en el dispositivo con IndexedDB, y se pide almacenamiento persistente para que el navegador no los borre si le falta espacio.
+- El OCR (`public/ocr/`, unos 15 MB) también se precachea: después de abrir la app una vez con internet, la lectura de tickets funciona en modo avión.
 
 Cuando se agrega un recurso nuevo, hay que verificar que quede cubierto por la caché (ver `globPatterns` en `astro.config.mjs`).
 
