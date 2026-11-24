@@ -4,6 +4,8 @@ dist/
 dev-dist/
 # generated types
 .astro/
+# archivos del OCR copiados desde node_modules (ver integraciones/ocr-offline.mjs)
+public/ocr/
 
 # dependencies
 node_modules/
