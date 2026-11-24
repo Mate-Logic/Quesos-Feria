@@ -1,0 +1,44 @@
+# Publica la app en GitHub Pages: https://mate-logic.github.io/Quesos-Feria/
+# Se construye acá (y no desde una rama) porque public/ocr/ se genera en el
+# build a partir de node_modules (ver integraciones/ocr-offline.mjs).
+
+name: Publicar en GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Si se pushea dos veces seguidas, gana la última publicación.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Bajar el repo
+        uses: actions/checkout@v7
+
+      - name: Instalar, probar y construir
+        uses: withastro/action@v6
+        with:
+          package-manager: bun@1.4.5
+          build-cmd: bun run test && bun run build
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Publicar
+        id: deployment
+        uses: actions/deploy-pages@v5
