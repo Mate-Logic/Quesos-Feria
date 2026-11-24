@@ -37,3 +37,8 @@ img {
 	display: block;
 	max-width: 100%;
 }
+
+/* Que `hidden` oculte siempre, aunque el componente le ponga otro display. */
+[hidden] {
+	display: none !important;
+}

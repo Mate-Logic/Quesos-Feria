@@ -1,0 +1,418 @@
+---
+// Hoja para revisar lo que se leyó del ticket (o cargar una venta a mano)
+// antes de guardarla. Se controla desde src/lib/ui/revision.ts.
+import { MARCAS } from '../lib/marcas';
+---
+
+<dialog id="revision" class="hoja" aria-labelledby="revision-titulo">
+	<form id="revision-form" method="dialog" novalidate>
+		<header class="cabecera">
+			<h2 id="revision-titulo">Revisá la venta</h2>
+			<button class="cerrar" type="button" value="cancelar" data-cancelar aria-label="Cancelar">
+				<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+			</button>
+		</header>
+
+		<!-- La imagen de la etiqueta se agrega desde revision.ts cuando hay foto. -->
+		<figure id="revision-foto" class="foto" hidden></figure>
+
+		<div id="revision-leyendo" class="leyendo" role="status" hidden>
+			<div class="barra-progreso"><span></span></div>
+			<p>Leyendo el ticket…</p>
+		</div>
+
+		<p id="revision-aviso" class="aviso" hidden></p>
+
+		<fieldset id="revision-campos" class="campos">
+			<legend class="visualmente-oculto">Datos de la venta</legend>
+
+			<div class="campo">
+				<span class="etiqueta" id="revision-marca-titulo">Marca</span>
+				<div class="marcas" role="radiogroup" aria-labelledby="revision-marca-titulo">
+					{
+						MARCAS.map((m) => (
+							<label class="marca">
+								<input type="radio" name="marca" value={m.id} required />
+								<img src={m.logo} alt="" width="40" height="40" loading="lazy" />
+								<span>{m.nombre}</span>
+							</label>
+						))
+					}
+				</div>
+			</div>
+
+			<label class="campo">
+				<span class="etiqueta">Producto</span>
+				<input name="producto" type="text" list="revision-productos" autocomplete="off" autocapitalize="sentences" placeholder="Ej.: Sardo" required />
+				<datalist id="revision-productos"></datalist>
+			</label>
+
+			<div class="fila">
+				<label class="campo">
+					<span class="etiqueta">Peso</span>
+					<span class="con-unidad">
+						<input name="peso" type="text" inputmode="decimal" autocomplete="off" placeholder="0,000" />
+						<span class="unidad">kg</span>
+					</span>
+				</label>
+				<label class="campo">
+					<span class="etiqueta">Precio por kg</span>
+					<span class="con-unidad">
+						<span class="unidad">$</span>
+						<input name="precio" type="text" inputmode="decimal" autocomplete="off" placeholder="0,00" />
+					</span>
+				</label>
+			</div>
+
+			<label class="campo total">
+				<span class="etiqueta">Total</span>
+				<span class="con-unidad">
+					<span class="unidad">$</span>
+					<input name="total" type="text" inputmode="decimal" autocomplete="off" placeholder="0,00" required />
+				</span>
+			</label>
+
+			<p id="revision-cuenta" class="cuenta" aria-live="polite"></p>
+		</fieldset>
+
+		<p id="revision-error" class="error" role="alert" hidden></p>
+
+		<footer class="acciones">
+			<button class="boton secundario" type="button" data-cancelar>Cancelar</button>
+			<button id="revision-guardar" class="boton primario" type="submit" value="guardar">Guardar venta</button>
+		</footer>
+	</form>
+</dialog>
+
+<style>
+	.hoja {
+		width: 100%;
+		max-width: 520px;
+		max-height: 94dvh;
+		margin: auto auto 0;
+		padding: 0;
+		border: 0;
+		border-radius: 24px 24px 0 0;
+		background: var(--superficie);
+		color: var(--texto);
+		box-shadow: 0 -12px 40px rgb(0 0 0 / 0.2);
+	}
+
+	.hoja[open] {
+		animation: subir 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+	}
+
+	.hoja::backdrop {
+		background: rgb(15 15 25 / 0.55);
+	}
+
+	@media (min-width: 600px) {
+		.hoja {
+			margin: auto;
+			border-radius: 24px;
+		}
+	}
+
+	form {
+		display: grid;
+		gap: 1rem;
+		padding: 1.25rem 1.25rem max(1.25rem, env(safe-area-inset-bottom));
+	}
+
+	.cabecera {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+	}
+
+	h2 {
+		font-size: 1.25rem;
+	}
+
+	.cerrar {
+		width: 40px;
+		height: 40px;
+		border: 0;
+		border-radius: 50%;
+		background: var(--fondo);
+		display: grid;
+		place-items: center;
+		cursor: pointer;
+	}
+
+	.cerrar svg {
+		width: 20px;
+		height: 20px;
+		fill: none;
+		stroke: currentColor;
+		stroke-width: 2;
+		stroke-linecap: round;
+	}
+
+	.foto {
+		border-radius: 14px;
+		overflow: hidden;
+		background: #222;
+		max-height: 30dvh;
+		display: grid;
+		place-items: center;
+	}
+
+	.foto :global(img) {
+		max-height: 30dvh;
+		width: 100%;
+		object-fit: contain;
+	}
+
+	.leyendo {
+		display: grid;
+		gap: 0.5rem;
+		color: var(--texto-suave);
+		font-size: 0.95rem;
+	}
+
+	.barra-progreso {
+		height: 6px;
+		border-radius: 999px;
+		background: var(--fondo);
+		overflow: hidden;
+	}
+
+	.barra-progreso span {
+		display: block;
+		height: 100%;
+		width: 5%;
+		border-radius: inherit;
+		background: var(--degrade);
+		transition: width 0.3s ease;
+	}
+
+	.aviso {
+		padding: 0.75rem 0.9rem;
+		border-radius: 12px;
+		font-size: 0.92rem;
+		line-height: 1.4;
+		background: #fff4e5;
+		color: #7a4b00;
+	}
+
+	.aviso[data-tipo='ok'] {
+		background: #e3f7f9;
+		color: #00606c;
+	}
+
+	.campos {
+		display: grid;
+		gap: 0.9rem;
+		border: 0;
+		min-width: 0;
+	}
+
+	.campos:disabled {
+		opacity: 0.45;
+	}
+
+	.campo {
+		display: grid;
+		gap: 0.35rem;
+		min-width: 0;
+	}
+
+	.etiqueta {
+		font-size: 0.85rem;
+		font-weight: 600;
+		color: var(--texto-suave);
+	}
+
+	.fila {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 0.75rem;
+	}
+
+	input[type='text'] {
+		width: 100%;
+		min-width: 0;
+		padding: 0.8rem 0.9rem;
+		border: 1.5px solid #d9d9e0;
+		border-radius: 12px;
+		font: inherit;
+		font-size: 1.05rem;
+		background: #fff;
+		color: inherit;
+	}
+
+	input[type='text']:focus {
+		outline: none;
+		border-color: var(--celeste);
+		box-shadow: 0 0 0 3px rgb(0 174 195 / 0.2);
+	}
+
+	input[data-calculado] {
+		background: #f2fbfc;
+		border-style: dashed;
+	}
+
+	input[aria-invalid='true'] {
+		border-color: var(--rosa);
+	}
+
+	.con-unidad {
+		position: relative;
+		display: flex;
+		align-items: center;
+	}
+
+	.con-unidad .unidad {
+		position: absolute;
+		color: var(--texto-suave);
+		pointer-events: none;
+	}
+
+	.con-unidad .unidad:first-child {
+		left: 0.9rem;
+	}
+
+	.con-unidad .unidad:first-child + input {
+		padding-left: 1.8rem;
+	}
+
+	.con-unidad input + .unidad {
+		right: 0.9rem;
+	}
+
+	.con-unidad input:has(+ .unidad) {
+		padding-right: 2.6rem;
+	}
+
+	.total input {
+		font-size: 1.5rem;
+		font-weight: 700;
+	}
+
+	.marcas {
+		display: grid;
+		grid-template-columns: repeat(4, 1fr);
+		gap: 0.5rem;
+	}
+
+	.marca {
+		display: grid;
+		justify-items: center;
+		gap: 0.3rem;
+		padding: 0.55rem 0.25rem;
+		border: 1.5px solid #e2e2e8;
+		border-radius: 14px;
+		font-size: 0.75rem;
+		text-align: center;
+		line-height: 1.15;
+		cursor: pointer;
+		transition:
+			border-color 0.15s,
+			background 0.15s;
+	}
+
+	.marca input {
+		position: absolute;
+		opacity: 0;
+		pointer-events: none;
+	}
+
+	.marca img {
+		width: 40px;
+		height: 40px;
+		border-radius: 50%;
+		object-fit: contain;
+		background: #fff;
+	}
+
+	.marca:has(input:checked) {
+		border-color: var(--rosa);
+		background: #fdeef5;
+		font-weight: 600;
+	}
+
+	.marca:has(input:focus-visible) {
+		outline: 3px solid rgb(0 174 195 / 0.4);
+	}
+
+	.cuenta {
+		min-height: 1.3em;
+		font-size: 0.9rem;
+		color: var(--texto-suave);
+	}
+
+	.cuenta[data-tipo='ok'] {
+		color: #00838f;
+	}
+
+	.cuenta[data-tipo='mal'] {
+		color: #b3125a;
+	}
+
+	.cuenta :global(button) {
+		margin-left: 0.25rem;
+		border: 0;
+		background: none;
+		color: var(--rosa);
+		font: inherit;
+		font-weight: 600;
+		text-decoration: underline;
+		cursor: pointer;
+	}
+
+	.error {
+		color: #b3125a;
+		font-weight: 600;
+	}
+
+	.acciones {
+		display: grid;
+		grid-template-columns: 1fr 2fr;
+		gap: 0.75rem;
+	}
+
+	.boton {
+		padding: 0.95rem 1rem;
+		border: 0;
+		border-radius: 999px;
+		font: inherit;
+		font-weight: 700;
+		cursor: pointer;
+	}
+
+	.primario {
+		background: var(--degrade);
+		color: #fff;
+	}
+
+	.primario:disabled {
+		opacity: 0.5;
+	}
+
+	.secundario {
+		background: var(--fondo);
+		color: var(--texto);
+	}
+
+	.visualmente-oculto {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		overflow: hidden;
+		clip-path: inset(50%);
+	}
+
+	@keyframes subir {
+		from {
+			transform: translateY(40px);
+			opacity: 0;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.hoja[open] {
+			animation: none;
+		}
+	}
+</style>
