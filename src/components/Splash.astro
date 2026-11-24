@@ -1,22 +1,23 @@
 ---
 // Pantalla de carga e inicio. Se muestra una vez por sesión al abrir la app
 // y se oculta cuando la página terminó de cargar (con un mínimo para que se lea).
+import { ruta } from '../lib/rutas';
 ---
 
 <div id="splash" class="splash" role="status" aria-live="polite" aria-label="Cargando la aplicación">
 	<div class="marca">
 		<div class="logos-productor">
 			<div class="logo-productor">
-				<img src="/img/huella-pampa.jpg" alt="Huella Pampa" width="150" height="150" />
+				<img src={ruta('img/huella-pampa.jpg')} alt="Huella Pampa" width="150" height="150" />
 			</div>
 			<div class="logo-productor">
-				<img src="/img/oliverio.jpg" alt="Oliverio Quesos Artesanales" width="320" height="320" />
+				<img src={ruta('img/oliverio.jpg')} alt="Oliverio Quesos Artesanales" width="320" height="320" />
 			</div>
 			<div class="logo-productor">
-				<img src="/img/mama-mecha.jpg" alt="Mamá Mecha" width="184" height="184" />
+				<img src={ruta('img/mama-mecha.jpg')} alt="Mamá Mecha" width="184" height="184" />
 			</div>
 			<div class="logo-productor">
-				<img src="/img/milkey.png" alt="Milkey" width="320" height="320" />
+				<img src={ruta('img/milkey.png')} alt="Milkey" width="320" height="320" />
 			</div>
 		</div>
 		<p class="app">Ventas de Feria</p>
@@ -28,7 +29,7 @@
 	</div>
 
 	<footer class="mercado">
-		<img src="/img/mb-logo-blanco.webp" alt="Mercados Bonaerenses" width="900" height="302" />
+		<img src={ruta('img/mb-logo-blanco.webp')} alt="Mercados Bonaerenses" width="900" height="302" />
 	</footer>
 </div>
 

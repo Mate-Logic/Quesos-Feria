@@ -5,8 +5,16 @@ import ocrOffline from './integraciones/ocr-offline.mjs';
 
 const COLOR_ROSA = '#e81f76';
 
+// Se publica en GitHub Pages, en una subcarpeta con el nombre del repo:
+// https://mate-logic.github.io/Quesos-Feria/
+const BASE = '/Quesos-Feria';
+
 // https://astro.build/config
 export default defineConfig({
+	site: 'https://mate-logic.github.io',
+	// Con la barra final: @vite-pwa/astro usa este valor como URL del inicio en
+	// el precache, y sin la barra "/Quesos-Feria/" no se encuentra sin conexión.
+	base: `${BASE}/`,
 	// Las fuentes se descargan en el build y se sirven desde el propio sitio,
 	// así quedan en la caché del service worker y funcionan offline.
 	fonts: [
@@ -31,8 +39,8 @@ export default defineConfig({
 				short_name: 'Ventas Feria',
 				description: 'Registro de ventas de Lácteos Huella Pampa en los Mercados Bonaerenses.',
 				lang: 'es-AR',
-				start_url: '/',
-				scope: '/',
+				start_url: `${BASE}/`,
+				scope: `${BASE}/`,
 				display: 'standalone',
 				orientation: 'portrait',
 				theme_color: COLOR_ROSA,
@@ -51,7 +59,7 @@ export default defineConfig({
 				globPatterns: ['**/*.{html,js,css,png,jpg,jpeg,webp,svg,ico,woff2,traineddata}'],
 				// El manifest, sus íconos y los `includeAssets` los agrega el plugin solo.
 				globIgnores: ['pwa-*.png', 'maskable-icon-*.png', 'apple-touch-icon-*.png', 'favicon.ico'],
-				navigateFallback: '/404',
+				navigateFallback: `${BASE}/404`,
 				cleanupOutdatedCaches: true,
 			},
 		}),

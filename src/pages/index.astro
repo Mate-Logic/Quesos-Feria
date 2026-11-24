@@ -3,13 +3,14 @@ import Layout from '../layouts/Layout.astro';
 import Splash from '../components/Splash.astro';
 import Camara from '../components/Camara.astro';
 import Revision from '../components/Revision.astro';
+import { ruta } from '../lib/rutas';
 ---
 
 <Layout>
 	<Splash />
 
 	<header class="barra">
-		<img class="productor" src="/img/huella-pampa.jpg" alt="Huella Pampa" width="150" height="150" />
+		<img class="productor" src={ruta('img/huella-pampa.jpg')} alt="Huella Pampa" width="150" height="150" />
 		<div>
 			<p class="titulo">Ventas de Feria</p>
 			<p class="subtitulo">Lácteos Huella Pampa</p>

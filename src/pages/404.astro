@@ -1,12 +1,13 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import { ruta } from '../lib/rutas';
 ---
 
 <Layout title="Página no encontrada · Ventas de Feria">
 	<main class="vacio">
 		<h1>No encontramos esta página</h1>
 		<p>Puede que no exista o que no esté disponible sin conexión.</p>
-		<a href="/">Volver al inicio</a>
+		<a href={ruta('')}>Volver al inicio</a>
 	</main>
 </Layout>
 

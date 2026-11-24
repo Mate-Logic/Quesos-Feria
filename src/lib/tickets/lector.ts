@@ -15,6 +15,7 @@ import {
 	type ImagenGris,
 } from './imagen';
 import { leerTicket, type LecturaTicket, type ProductoConocido } from './parser';
+import { ruta } from '../rutas';
 
 export interface ResultadoLectura {
 	lectura: LecturaTicket;
@@ -55,9 +56,9 @@ let lector: Promise<Worker> | null = null;
 /** Crea el worker del OCR (una sola vez). Conviene llamarla antes de sacar la foto. */
 export function prepararLector(): Promise<Worker> {
 	lector ??= createWorker('spa', OEM.LSTM_ONLY, {
-		workerPath: new URL('/ocr/worker.min.js', location.href).href,
-		corePath: new URL('/ocr', location.href).href,
-		langPath: new URL('/ocr', location.href).href,
+		workerPath: new URL(ruta('ocr/worker.min.js'), location.href).href,
+		corePath: new URL(ruta('ocr'), location.href).href,
+		langPath: new URL(ruta('ocr'), location.href).href,
 		gzip: false,
 		// El worker se carga desde su URL y no como blob, así sus pedidos pasan
 		// por el service worker y salen de la caché.

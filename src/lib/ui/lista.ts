@@ -2,6 +2,7 @@
 
 import { hora, inicioDelDia, kilos, nombreDelDia, pesos } from '../formato';
 import { MARCAS, marcaPorId } from '../marcas';
+import { ruta } from '../rutas';
 import type { Venta } from '../ventas/db';
 
 export interface AccionesLista {
@@ -88,7 +89,7 @@ function itemVenta(v: Venta, acciones: AccionesLista): HTMLLIElement {
 	const marca = marcaPorId(v.marca);
 	const logo = new Image(40, 40);
 	logo.className = 'venta-logo';
-	logo.src = marca?.logo ?? '/pwa-192x192.png';
+	logo.src = marca?.logo ?? ruta('pwa-192x192.png');
 	logo.alt = '';
 
 	const info = document.createElement('span');
