@@ -2,6 +2,8 @@
 
 Aplicación para anotar las ventas de **Lácteos Huella Pampa**, productor de quesos de Chivilcoy, en los puestos de los [Mercados Bonaerenses](https://mi.mda.gba.gob.ar/mercados/bonaerenses/v2/productor/1ecf3c9f-f629-661a-9f05-d15c5b752137), la feria de la Provincia de Buenos Aires.
 
+**App publicada:** https://mate-logic.github.io/Quesos-Feria/
+
 Se usa desde el celular, en el puesto, muchas veces sin señal. Por eso es una **Progressive Web App (PWA) instalable que funciona sin conexión**: después de abrirla una vez con internet, se puede usar en modo avión.
 
 > **Estado:** en desarrollo. Ya se pueden anotar ventas leyendo la foto del ticket de la balanza (o a mano), ver el resumen del día y exportar todo a CSV, sin conexión.
@@ -28,7 +30,7 @@ bun install
 bun run dev
 ```
 
-El servidor de desarrollo queda en `http://localhost:4321`.
+El servidor de desarrollo queda en `http://localhost:4321/Quesos-Feria/`.
 
 ### Comandos
 
@@ -44,12 +46,22 @@ El servidor de desarrollo queda en `http://localhost:4321`.
 
 > Usá `bun run build` y no `bun build`: este último es el bundler de Bun, no el script del proyecto.
 
+## Publicación
+
+La app se publica en GitHub Pages con el workflow `.github/workflows/deploy.yml`: cada push a `main` corre los tests, construye el sitio con bun y lo publica en https://mate-logic.github.io/Quesos-Feria/. Los celulares que ya la tienen instalada reciben la versión nueva la próxima vez que la abren con señal.
+
+Como el sitio vive en la subcarpeta `/Quesos-Feria/` (el `base` de `astro.config.mjs`), ninguna ruta puede empezar con `/` a secas: las imágenes, el OCR y los enlaces se arman con `ruta()` de `src/lib/rutas.ts`.
+
+Para usarla en la feria: abrirla una vez con internet en el celular, esperar a que cargue y agregarla a la pantalla de inicio (*Instalar app* o *Agregar a pantalla de inicio*). Desde ahí funciona sin señal.
+
+Las ventas se guardan solo en ese celular. Conviene exportarlas (botón **Exportar**) al terminar cada feria y mandarse el CSV, porque si el celular se pierde o se resetea, las ventas se pierden con él.
+
 ## Probar el modo sin conexión
 
 El service worker **no funciona en modo dev**, así que el soporte offline se prueba siempre sobre el build:
 
 1. `bun run build && bun run preview`
-2. Abrir la app en el navegador y esperar a que termine de cargar.
+2. Abrir `http://localhost:4321/Quesos-Feria/` en el navegador y esperar a que termine de cargar.
 3. En las DevTools, pestaña *Network* (o *Application → Service workers*), activar **Offline**.
 4. Recargar y navegar por la app: todo tiene que seguir funcionando. Las rutas que no estén en caché muestran la página de respaldo (`/404`).
 
@@ -83,6 +95,7 @@ Las fotos de `fotos_prueba/` son tickets reales con los valores que se tienen qu
 │   ├── pwa-192x192.png
 │   ├── pwa-512x512.png
 │   └── maskable-icon-512x512.png
+├── .github/workflows/deploy.yml    # publica en GitHub Pages en cada push a main
 ├── fotos_prueba/                   # fotos reales de tickets para probar la lectura
 ├── integraciones/
 │   └── ocr-offline.mjs             # copia Tesseract.js a public/ocr/ para usarlo sin conexión
@@ -102,6 +115,7 @@ Las fotos de `fotos_prueba/` son tickets reales con los valores que se tienen qu
 │   │   ├── ventas/                 # IndexedDB y exportación a CSV
 │   │   ├── ui/                     # cámara, hoja de revisión y lista
 │   │   ├── formato.ts              # números y fechas en formato argentino
+│   │   ├── rutas.ts                # arma las rutas con el base de GitHub Pages
 │   │   └── marcas.ts               # marcas que se venden en el puesto
 │   ├── styles/
 │   │   └── global.css              # variables de color y estilos base

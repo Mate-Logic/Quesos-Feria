@@ -69,6 +69,7 @@ Este proyecto es, sí o sí, una **Progressive Web App instalable que funciona s
 - **Página de respaldo offline**: debe existir una página de respaldo para cuando se navega a una ruta que no está en caché.
 - **Actualizaciones**: cuando se publica una versión nueva, el service worker se actualiza sin dejar a los usuarios con una versión vieja rota.
 - **Verificación**: antes de dar un cambio por terminado se prueba con `astro build` + `astro preview` y la red en modo *Offline* en las DevTools, recargando y navegando por la app. El modo dev no sirve para probar el service worker.
+- **Rutas con `base`**: la app se publica en GitHub Pages bajo `/Quesos-Feria/` (https://mate-logic.github.io/Quesos-Feria/). Ninguna ruta empieza con `/` a secas: las imágenes, los archivos de `public/` y los enlaces se arman con `ruta()` de `src/lib/rutas.ts`. Una ruta absoluta funciona en `localhost` pero se rompe publicada y sin conexión.
 - **Herramientas**: la opción de referencia es la integración [`@vite-pwa/astro`](https://vite-pwa-org.netlify.app/frameworks/astro) (Workbox). Antes de usarla o cambiarla, se consulta Context7 (regla 2) y se confirma que sea compatible con la versión de Astro instalada.
 
 ### 4. Bun es el único gestor de paquetes
