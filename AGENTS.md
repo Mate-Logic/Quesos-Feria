@@ -71,6 +71,23 @@ Este proyecto es, sí o sí, una **Progressive Web App instalable que funciona s
 - **Verificación**: antes de dar un cambio por terminado se prueba con `astro build` + `astro preview` y la red en modo *Offline* en las DevTools, recargando y navegando por la app. El modo dev no sirve para probar el service worker.
 - **Herramientas**: la opción de referencia es la integración [`@vite-pwa/astro`](https://vite-pwa-org.netlify.app/frameworks/astro) (Workbox). Antes de usarla o cambiarla, se consulta Context7 (regla 2) y se confirma que sea compatible con la versión de Astro instalada.
 
+### 4. Bun es el único gestor de paquetes
+
+El proyecto usa [Bun](https://bun.sh) y el único lockfile es `bun.lock`. No se usan `npm`, `npx`, `yarn` ni `pnpm`, ni siquiera para consultas de solo lectura.
+
+| En vez de                     | Se usa                              |
+| :---------------------------- | :---------------------------------- |
+| `npm install`                 | `bun install`                       |
+| `npm install <paquete>`       | `bun add <paquete>` (`-d` para dev) |
+| `npm uninstall <paquete>`     | `bun remove <paquete>`              |
+| `npm run <script>`            | `bun run <script>`                  |
+| `npx <comando>`               | `bunx <comando>`                    |
+| `npm view <paquete>`          | `bun pm view <paquete>`             |
+
+- Los scripts del proyecto se corren con `bun run <script>` (por ejemplo `bun run build`). `bun build` es el bundler de Bun, no el script del proyecto.
+- No se agregan `package-lock.json`, `yarn.lock` ni `pnpm-lock.yaml`. Si aparece alguno, se borra.
+- Bun bloquea los scripts `postinstall` de las dependencias. Solo se habilitan con `bun pm trust <paquete>` si hacen falta y después de revisar qué hacen.
+
 ## Development
 
 When starting the dev server, use background mode:
