@@ -245,7 +245,8 @@ function tarjetaVentaAbierta(venta: Venta, acciones: AccionesVentasAbiertas): HT
 	const finalizar = document.createElement('button');
 	finalizar.type = 'button';
 	finalizar.className = 'boton-finalizar';
-	finalizar.textContent = 'Cobrar y finalizar';
+	finalizar.textContent = 'Cobrar';
+	finalizar.setAttribute('aria-label', 'Cobrar y finalizar la venta');
 	finalizar.disabled = venta.productos.length === 0;
 	finalizar.addEventListener('click', () => acciones.alFinalizar(venta));
 	const cancelar = document.createElement('button');
