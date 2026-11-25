@@ -129,7 +129,8 @@ Las fotos de `fotos_prueba/` son tickets reales con los valores que se tienen qu
 ## PWA y modo offline
 
 - El service worker se genera con Workbox y **precachea todo el build** (HTML, JS, CSS, imágenes, íconos y fuentes).
-- Se actualiza solo (`registerType: 'autoUpdate'`): cuando hay una versión nueva, se activa y la página se recarga.
+- Se actualiza solo (`registerType: 'autoUpdate'`, ver `src/pwa.ts`): cuando hay una versión nueva, se descarga, queda en caché y la página se recarga. Además de al abrir la app, busca versiones nuevas cada 30 minutos y al volver a la app, si hay señal. La recarga espera a que no haya nada a medio hacer (cargando un producto, cobrando, con la cámara abierta o escribiendo).
+- Los parámetros de la dirección (`?algo`) se ignoran al buscar en la caché, así un enlace con parámetros abre la app y no la página de respaldo.
 - Si se navega a una ruta que no está en caché, se muestra `/404` como respaldo.
 - No se carga nada desde CDNs ni dominios de terceros: la fuente Encode Sans se descarga en el build con la API de fuentes de Astro y se sirve desde el propio sitio.
 - Las ventas y los productos conocidos se guardan en el dispositivo con IndexedDB, y se pide almacenamiento persistente para que el navegador no los borre si le falta espacio.
