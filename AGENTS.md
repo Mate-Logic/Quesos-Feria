@@ -1,3 +1,9 @@
+## ⚠️ Pendiente urgente: avisar al empezar la sesión
+
+Al iniciar cualquier sesión en este repositorio, en cualquier computadora, **lo primero es recordarle al usuario este pendiente**, hasta que se resuelva y se borre esta sección:
+
+- **Catálogo de productos**: falta que el usuario pase la lista completa de productos (nombre, marca, si se vende por kilo o por unidad y precio si lo tiene). El detalle de lo que hay que armar está en el README, sección *Pendiente urgente*.
+
 ## Sobre el proyecto
 
 Aplicación para anotar las ventas de **Lácteos Huella Pampa** (productor de quesos de Chivilcoy) en los puestos de los [Mercados Bonaerenses](https://mi.mda.gba.gob.ar/mercados/bonaerenses/v2/productor/1ecf3c9f-f629-661a-9f05-d15c5b752137), la feria de la Provincia de Buenos Aires. Se usa desde el celular, en el puesto, muchas veces sin señal (ver regla 3).
@@ -94,6 +100,23 @@ El proyecto usa [Bun](https://bun.sh) y el único lockfile es `bun.lock`. No se 
 - Usar GitHub CLI (`gh`) para las operaciones remotas que soporte: consultar repositorios, issues, pull requests, acciones, releases y autenticación. No reemplazar con llamadas HTTP o navegación manual una operación disponible en `gh`.
 - Antes de actuar sobre GitHub, verificar la autenticación con `gh auth status` y confirmar el repositorio y la rama destino.
 - Para publicar commits locales en una rama, `gh` no ofrece un comando genérico de `push`: después de verificar el remoto, usar `git push origin <rama>`. No usar `gh repo sync` para publicar cambios locales; ese comando sincroniza forks.
+
+### 6. Diseño: todo entra en una pantalla, sin desplazamiento vertical
+
+La app la usan personas mayores en el puesto, con las manos ocupadas. Tiene que ser simple, grande y obvia.
+
+- **Prohibido el desplazamiento vertical** (de arriba a abajo) en toda la app. La única excepción, por ahora, es "Ventas del día".
+- El **deslizamiento horizontal** entre hojas (como las ventas abiertas) sí está bien y es la forma de cambiar de venta.
+- Si algo no entra, se resume (por ejemplo, "+ 3 productos más") o se compacta; nunca se agrega scroll.
+- Probar siempre en tamaños de celular: 375×667 y 360×560 como mínimo.
+- Textos y botones grandes, al alcance del pulgar (abajo), con áreas táctiles de 44 px o más.
+
+### 7. Publicación: directo a `main`
+
+- Cuando los cambios pasan los tests, se commitean y se suben directo a `origin main`, **sin ramas ni pull requests**.
+- Si la firma de commits falla (por ejemplo, 1Password sin conexión), se commitea igual sin firma (`git -c commit.gpgsign=false commit`).
+- Después del push, se espera el deploy de GitHub Pages (`gh run watch`) y se verifica la versión publicada.
+- En algunas computadoras sin AVX, `astro build`, `astro check` y `astro dev` se caen con "Illegal instruction" porque el compilador nativo de Astro no corre ahí. En ese caso, los tipos se chequean con `bunx tsc` y el build se valida en CI y en la versión publicada.
 
 ## Development
 
