@@ -60,6 +60,10 @@ export default defineConfig({
 				// El manifest, sus íconos y los `includeAssets` los agrega el plugin solo.
 				globIgnores: ['pwa-*.png', 'maskable-icon-*.png', 'apple-touch-icon-*.png', 'favicon.ico'],
 				navigateFallback: `${BASE}/404`,
+				// La app no usa parámetros en la URL: se ignoran todos al buscar en la
+				// caché, así un enlace con "?algo" abre la app y no la página 404.
+				// (Opción de generateSW en @vite-pwa/workbox-build; Context7 no la documenta.)
+				ignoreURLParametersMatching: [/.*/],
 				cleanupOutdatedCaches: true,
 			},
 		}),
