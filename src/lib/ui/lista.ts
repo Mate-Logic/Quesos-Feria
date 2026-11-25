@@ -55,6 +55,20 @@ export function dibujarResumen(ventas: Venta[]): void {
 	);
 }
 
+/** Hoja que se veía en el último dibujo, para no perder la posición al refrescar. */
+let hojaAnterior: string | null = null;
+let centrarHojaActiva: (() => void) | null = null;
+
+/** Vuelve a ubicar la hoja activa (por ejemplo, al volver a mostrar la pestaña). */
+export function centrarVentaActiva(): void {
+	centrarHojaActiva?.();
+}
+
+/**
+ * Las ventas abiertas son hojas que se pasan deslizando con el dedo. Usa el
+ * scroll horizontal nativo con `scroll-snap`: la hoja sigue al dedo y se
+ * acomoda sola, sin librerías y sin perder la posición al volver a dibujar.
+ */
 export function dibujarVentasAbiertas(
 	contenedor: HTMLElement,
 	ventas: Venta[],
@@ -62,6 +76,8 @@ export function dibujarVentasAbiertas(
 	acciones: AccionesVentasAbiertas,
 ): void {
 	if (!ventas.length) {
+		hojaAnterior = null;
+		centrarHojaActiva = null;
 		const vacio = document.createElement('p');
 		vacio.className = 'lista-vacia';
 		vacio.textContent = 'No hay ventas abiertas. Iniciá una cuando empieces a atender a un cliente.';
@@ -69,65 +85,102 @@ export function dibujarVentasAbiertas(
 		return;
 	}
 
-	let indice = Math.max(0, ventas.findIndex((v) => v.id === activaId));
-	const estado = document.createElement('p');
-	estado.className = 'carrusel-estado';
-	estado.setAttribute('aria-live', 'polite');
-	const anterior = document.createElement('button');
-	anterior.type = 'button';
-	anterior.className = 'carrusel-control';
-	anterior.setAttribute('aria-label', 'Ver venta anterior');
-	anterior.textContent = '‹';
-	const siguiente = document.createElement('button');
-	siguiente.type = 'button';
-	siguiente.className = 'carrusel-control';
-	siguiente.setAttribute('aria-label', 'Ver venta siguiente');
-	siguiente.textContent = '›';
-	const pista = document.createElement('div');
-	pista.className = 'carrusel-pista';
+	const sinAnimacion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 	const ventana = document.createElement('div');
 	ventana.className = 'carrusel-ventana';
+	ventana.tabIndex = -1;
+	const hojas = ventas.map((venta, i) => {
+		const hoja = tarjetaVentaAbierta(venta, acciones);
+		hoja.setAttribute('aria-roledescription', 'hoja');
+		hoja.setAttribute('aria-label', `Venta ${i + 1} de ${ventas.length}${venta.cliente ? `, ${venta.cliente}` : ''}`);
+		return hoja;
+	});
+	ventana.append(...hojas);
 
-	for (const venta of ventas) pista.append(tarjetaVentaAbierta(venta, acciones));
-	ventana.append(pista);
+	const anterior = boton('carrusel-control', '‹', 'Ver la venta anterior');
+	const siguiente = boton('carrusel-control', '›', 'Ver la venta siguiente');
+	const estado = document.createElement('p');
+	estado.className = 'carrusel-estado';
+	const puntos = document.createElement('div');
+	puntos.className = 'carrusel-puntos';
+	const botonesPunto = ventas.map((venta, i) => {
+		const punto = boton('carrusel-punto', '', `Ir a la venta ${i + 1}${venta.cliente ? ` (${venta.cliente})` : ''}`);
+		punto.addEventListener('click', () => irA(i));
+		return punto;
+	});
+	if (ventas.length > 1) puntos.append(...botonesPunto);
 
-	const actualizar = () => {
-		const activa = ventas[indice];
-		if (!activa) return;
-		pista.style.transform = `translateX(-${indice * 100}%)`;
-		estado.textContent = `Venta ${indice + 1} de ${ventas.length}${ventas.length > 1 ? ' · Deslizá para cambiar' : ''}`;
+	let indice = -1;
+	const marcar = (nuevo: number) => {
+		if (nuevo === indice) return;
+		indice = nuevo;
+		const venta = ventas[indice]!;
+		hojaAnterior = venta.id;
+		hojas.forEach((h, i) => h.classList.toggle('activa', i === indice));
+		botonesPunto.forEach((p, i) => p.setAttribute('aria-current', String(i === indice)));
+		estado.textContent = `Venta ${indice + 1} de ${ventas.length}`;
 		anterior.disabled = indice === 0;
 		siguiente.disabled = indice === ventas.length - 1;
-		acciones.alSeleccionar(activa.id);
+		acciones.alSeleccionar(venta.id);
 	};
-	const mover = (delta: number) => {
-		const nuevoIndice = Math.max(0, Math.min(ventas.length - 1, indice + delta));
-		if (nuevoIndice === indice) return;
-		indice = nuevoIndice;
-		actualizar();
+	const posicion = (i: number) => {
+		const hoja = hojas[i]!;
+		return hoja.offsetLeft - (ventana.clientWidth - hoja.offsetWidth) / 2;
 	};
-	anterior.addEventListener('click', () => mover(-1));
-	siguiente.addEventListener('click', () => mover(1));
+	const irA = (i: number, suave = true) => {
+		const destino = Math.max(0, Math.min(ventas.length - 1, i));
+		ventana.scrollTo({ left: posicion(destino), behavior: suave && !sinAnimacion ? 'smooth' : 'instant' });
+		marcar(destino);
+	};
+	anterior.addEventListener('click', () => irA(indice - 1));
+	siguiente.addEventListener('click', () => irA(indice + 1));
 
-	let inicio: { x: number; y: number } | null = null;
-	ventana.addEventListener('pointerdown', (evento) => {
-		if ((evento.target as HTMLElement).closest('button, input')) return;
-		inicio = { x: evento.clientX, y: evento.clientY };
+	// Mientras se desliza, la hoja activa es la que quedó más cerca del centro.
+	let pendiente = 0;
+	ventana.addEventListener(
+		'scroll',
+		() => {
+			cancelAnimationFrame(pendiente);
+			pendiente = requestAnimationFrame(() => {
+				const centro = ventana.scrollLeft + ventana.clientWidth / 2;
+				let masCerca = 0;
+				hojas.forEach((h, i) => {
+					const distancia = Math.abs(h.offsetLeft + h.offsetWidth / 2 - centro);
+					const mejor = Math.abs(hojas[masCerca]!.offsetLeft + hojas[masCerca]!.offsetWidth / 2 - centro);
+					if (distancia < mejor) masCerca = i;
+				});
+				marcar(masCerca);
+			});
+		},
+		{ passive: true },
+	);
+	ventana.addEventListener('keydown', (evento) => {
+		if ((evento.target as HTMLElement).closest('input')) return;
+		if (evento.key === 'ArrowLeft') irA(indice - 1);
+		if (evento.key === 'ArrowRight') irA(indice + 1);
 	});
-	ventana.addEventListener('pointerup', (evento) => {
-		if (!inicio) return;
-		const dx = evento.clientX - inicio.x;
-		const dy = evento.clientY - inicio.y;
-		inicio = null;
-		if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy) * 1.2) mover(dx < 0 ? 1 : -1);
-	});
-	ventana.addEventListener('pointercancel', () => (inicio = null));
-	actualizar();
+
 	const cabecera = document.createElement('div');
 	cabecera.className = 'carrusel-cabecera';
-	contenedor.replaceChildren(cabecera);
 	cabecera.append(anterior, estado, siguiente);
-	contenedor.append(ventana);
+	contenedor.replaceChildren(cabecera, ventana, puntos);
+
+	// Arranca donde estaba el usuario; si la activa cambió (venta nueva), se desliza hasta ella.
+	const buscar = (id: string | null) => ventas.findIndex((v) => v.id === id);
+	const destino = Math.max(0, buscar(activaId));
+	const desde = buscar(hojaAnterior);
+	irA(desde >= 0 ? desde : destino, false);
+	if (desde >= 0 && desde !== destino) requestAnimationFrame(() => irA(destino));
+	centrarHojaActiva = () => irA(indice, false);
+}
+
+function boton(clase: string, texto: string, etiqueta: string): HTMLButtonElement {
+	const b = document.createElement('button');
+	b.type = 'button';
+	b.className = clase;
+	b.textContent = texto;
+	b.setAttribute('aria-label', etiqueta);
+	return b;
 }
 
 function tarjetaVentaAbierta(venta: Venta, acciones: AccionesVentasAbiertas): HTMLElement {
@@ -196,11 +249,16 @@ function tarjetaVentaAbierta(venta: Venta, acciones: AccionesVentasAbiertas): HT
 	return tarjeta;
 }
 
-export function dibujarLista(contenedor: HTMLElement, ventas: Venta[], acciones: AccionesLista): void {
+export function dibujarLista(
+	contenedor: HTMLElement,
+	ventas: Venta[],
+	acciones: AccionesLista,
+	textoVacio = 'Las ventas aparecen acá cuando se finalizan.',
+): void {
 	if (!ventas.length) {
 		const vacio = document.createElement('p');
 		vacio.className = 'lista-vacia';
-		vacio.textContent = 'Las ventas aparecen acá cuando se finalizan. Las que están abiertas quedan arriba para retomarlas.';
+		vacio.textContent = textoVacio;
 		contenedor.replaceChildren(vacio);
 		return;
 	}

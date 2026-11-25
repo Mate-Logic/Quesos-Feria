@@ -18,23 +18,18 @@ import { ruta } from '../lib/rutas';
 	</header>
 
 	<main class="contenido">
-		<section class="resumen" aria-labelledby="resumen-titulo">
-			<h1 id="resumen-titulo">Vendido hoy</h1>
-			<p id="resumen-total" class="resumen-total">$ 0,00</p>
-			<p id="resumen-detalle" class="resumen-detalle">Todavía no hay ventas hoy</p>
-			<ul id="resumen-marcas" class="resumen-marcas" aria-label="Total por marca"></ul>
-		</section>
-
+		<div id="panel-vender" class="panel" role="tabpanel" aria-labelledby="pestana-vender">
 		<section class="ventas-abiertas" aria-labelledby="abiertas-titulo">
 			<header class="ventas-cabecera">
 				<h2 id="abiertas-titulo">Ventas abiertas</h2>
 				<button id="btn-nueva-venta" class="boton-nueva-venta" type="button">+ Nueva venta</button>
 			</header>
 			<div id="carrusel-abiertas" class="carrusel"></div>
-			<p class="ayuda-ventas">La venta visible recibe los productos que cargues abajo. Deslizá para cambiar de cliente; al cobrar, finalizala.</p>
+			<p class="ayuda-ventas">Deslizá las hojas para cambiar de cliente. Al cobrar, finalizá la venta.</p>
 		</section>
 
 		<section class="acciones" aria-label="Cargar productos en la venta visible o iniciar una nueva">
+			<p id="destino-carga" class="destino-carga" aria-live="polite"></p>
 			<button id="btn-camara" class="accion principal" type="button" hidden>
 				<svg viewBox="0 0 24 24" aria-hidden="true">
 					<path d="M4 8a2 2 0 0 1 2-2h2l1.5-2h5L16 6h2a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"></path>
@@ -67,10 +62,19 @@ import { ruta } from '../lib/rutas';
 				Cargar a mano
 			</button>
 		</section>
+		</div>
+
+		<div id="panel-dia" class="panel" role="tabpanel" aria-labelledby="pestana-dia" hidden>
+		<section class="resumen" aria-labelledby="resumen-titulo">
+			<h1 id="resumen-titulo">Vendido hoy</h1>
+			<p id="resumen-total" class="resumen-total">$ 0,00</p>
+			<p id="resumen-detalle" class="resumen-detalle">Todavía no hay ventas hoy</p>
+			<ul id="resumen-marcas" class="resumen-marcas" aria-label="Total por marca"></ul>
+		</section>
 
 		<section class="ventas" aria-labelledby="ventas-titulo">
 			<header class="ventas-cabecera">
-				<h2 id="ventas-titulo">Ventas finalizadas</h2>
+				<h2 id="ventas-titulo">Ventas de hoy</h2>
 				<button id="btn-exportar" class="exportar" type="button" disabled>
 					<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"></path></svg>
 					Exportar
@@ -79,11 +83,30 @@ import { ruta } from '../lib/rutas';
 			<div id="lista-ventas" class="lista"></div>
 		</section>
 
+		<details id="anteriores-panel" class="canceladas-panel" hidden>
+			<summary>Días anteriores</summary>
+			<div id="lista-anteriores" class="lista anteriores"></div>
+		</details>
+
 		<details id="canceladas-panel" class="canceladas-panel" hidden>
 			<summary>Ventas canceladas</summary>
 			<div id="lista-canceladas"></div>
 		</details>
+		</div>
 	</main>
+
+	<nav class="pestanas" role="tablist" aria-label="Secciones">
+		<button id="pestana-vender" class="pestana" type="button" role="tab" aria-controls="panel-vender" aria-selected="true">
+			<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l4 4v14H6z"></path><path d="M14 3v5h5M9 13h7M9 17h5"></path></svg>
+			<span>Vender</span>
+			<span id="contador-abiertas" class="contador" hidden></span>
+		</button>
+		<button id="pestana-dia" class="pestana" type="button" role="tab" aria-controls="panel-dia" aria-selected="false">
+			<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"></rect><path d="M4 10h16M9 3v4M15 3v4"></path></svg>
+			<span>Ventas del día</span>
+			<span id="contador-dia" class="contador" hidden></span>
+		</button>
+	</nav>
 
 	<div id="aviso" class="aviso" role="status" aria-live="polite" hidden></div>
 
@@ -94,7 +117,15 @@ import { ruta } from '../lib/rutas';
 <script>
 	import { abrirCamara, esCelular, hayCamara } from '../lib/ui/camara';
 	import { abrirRevision } from '../lib/ui/revision';
-	import { avisar, dibujarCanceladas, dibujarLista, dibujarResumen, dibujarVentasAbiertas } from '../lib/ui/lista';
+	import {
+		avisar,
+		centrarVentaActiva,
+		dibujarCanceladas,
+		dibujarLista,
+		dibujarResumen,
+		dibujarVentasAbiertas,
+	} from '../lib/ui/lista';
+	import { inicioDelDia } from '../lib/formato';
 	import { leerFoto, prepararLector } from '../lib/tickets/lector';
 	import {
 		borrarVenta,
@@ -122,6 +153,40 @@ import { ruta } from '../lib/rutas';
 	const inputCamaraSistema = document.getElementById('input-camara-sistema') as HTMLInputElement;
 	const btnManual = document.getElementById('btn-manual') as HTMLButtonElement;
 	const btnExportar = document.getElementById('btn-exportar') as HTMLButtonElement;
+	const listaAnteriores = document.getElementById('lista-anteriores')!;
+	const anterioresPanel = document.getElementById('anteriores-panel') as HTMLDetailsElement;
+	const destinoCarga = document.getElementById('destino-carga')!;
+	const contadorAbiertas = document.getElementById('contador-abiertas')!;
+	const contadorDia = document.getElementById('contador-dia')!;
+	const PESTANAS = {
+		vender: { boton: document.getElementById('pestana-vender')!, panel: document.getElementById('panel-vender')! },
+		dia: { boton: document.getElementById('pestana-dia')!, panel: document.getElementById('panel-dia')! },
+	};
+	type Pestana = keyof typeof PESTANAS;
+	const PESTANA_GUARDADA = 'pestana';
+
+	function mostrarPestana(nombre: Pestana) {
+		for (const [clave, { boton, panel }] of Object.entries(PESTANAS)) {
+			const activa = clave === nombre;
+			boton.setAttribute('aria-selected', String(activa));
+			boton.tabIndex = activa ? 0 : -1;
+			panel.hidden = !activa;
+		}
+		sessionStorage.setItem(PESTANA_GUARDADA, nombre);
+		window.scrollTo({ top: 0 });
+		if (nombre === 'vender') centrarVentaActiva();
+	}
+
+	for (const [clave, { boton }] of Object.entries(PESTANAS)) {
+		boton.addEventListener('click', () => mostrarPestana(clave as Pestana));
+		boton.addEventListener('keydown', (evento) => {
+			if (evento.key !== 'ArrowLeft' && evento.key !== 'ArrowRight') return;
+			const otra: Pestana = clave === 'vender' ? 'dia' : 'vender';
+			mostrarPestana(otra);
+			PESTANAS[otra].boton.focus();
+		});
+	}
+	mostrarPestana(sessionStorage.getItem(PESTANA_GUARDADA) === 'dia' ? 'dia' : 'vender');
 
 	let ventas: Venta[] = [];
 	let productos: Producto[] = [];
@@ -136,8 +201,23 @@ import { ruta } from '../lib/rutas';
 	}
 
 	const ULTIMA_MARCA = 'ultima-marca';
-	const abiertasActuales = () => ventas.filter((v) => v.estado === 'abierta');
+	// Las hojas van de la más vieja a la más nueva: una venta nueva se suma al final de la pila.
+	const abiertasActuales = () => ventas.filter((v) => v.estado === 'abierta').sort((a, b) => a.creada - b.creada);
 	const ventaActiva = () => abiertasActuales().find((v) => v.id === ventaActivaId);
+
+	function mostrarDestino() {
+		const pendientes = abiertasActuales();
+		const indice = pendientes.findIndex((v) => v.id === ventaActivaId);
+		const activa = pendientes[indice];
+		destinoCarga.textContent = activa
+			? `Se suma a la venta ${indice + 1}${activa.cliente ? ` · ${activa.cliente}` : ''}`
+			: 'Se abre una venta nueva con el primer producto';
+	}
+
+	function contar(elemento: HTMLElement, cantidad: number) {
+		elemento.hidden = cantidad === 0;
+		elemento.textContent = String(cantidad);
+	}
 
 	async function refrescar() {
 		[ventas, productos] = await Promise.all([listarVentas(), listarProductos()]);
@@ -145,21 +225,32 @@ import { ruta } from '../lib/rutas';
 		if (!pendientes.some((v) => v.id === ventaActivaId)) ventaActivaId = pendientes[0]?.id ?? null;
 		const finalizadas = ventas.filter((v) => v.estado === 'finalizada');
 		const canceladas = ventas.filter((v) => v.estado === 'cancelada');
+		const hoy = inicioDelDia(Date.now());
+		const esDeHoy = (v: Venta) => (v.finalizada ?? v.creada) >= hoy;
+		const deHoy = finalizadas.filter(esDeHoy);
+		const anteriores = finalizadas.filter((v) => !esDeHoy(v));
 		dibujarResumen(ventas);
+		contar(contadorAbiertas, pendientes.length);
+		contar(contadorDia, deHoy.length);
 		dibujarVentasAbiertas(abiertas, pendientes, ventaActivaId, {
 			alSeleccionar(id) {
 				ventaActivaId = id;
+				mostrarDestino();
 			},
 			alCambiarCliente: (venta, cliente) =>
 				void ejecutar(() => cambiarCliente(venta, cliente), 'No se pudo guardar el cliente. Intentá de nuevo.'),
 			alFinalizar: (venta) => void ejecutar(() => finalizar(venta), 'No se pudo finalizar la venta. Intentá de nuevo.'),
 			alCancelar: (venta) => void ejecutar(() => cancelar(venta), 'No se pudo cancelar la venta. Intentá de nuevo.'),
 		});
-		dibujarLista(lista, finalizadas, {
-			alEditar: (venta, producto) =>
+		const accionesLista = {
+			alEditar: (venta: Venta, producto: ProductoVenta) =>
 				void ejecutar(() => editar(venta, producto), 'No se pudieron guardar los cambios. Intentá de nuevo.'),
-			alBorrar: (venta) => void ejecutar(() => borrar(venta), 'No se pudo borrar la venta. Intentá de nuevo.'),
-		});
+			alBorrar: (venta: Venta) => void ejecutar(() => borrar(venta), 'No se pudo borrar la venta. Intentá de nuevo.'),
+		};
+		dibujarLista(lista, deHoy, accionesLista, 'Todavía no finalizaste ventas hoy. Las ventas aparecen acá cuando las cobrás.');
+		dibujarLista(listaAnteriores, anteriores, accionesLista);
+		anterioresPanel.hidden = anteriores.length === 0;
+		mostrarDestino();
 		dibujarCanceladas(listaCanceladas, canceladas);
 		canceladasPanel.hidden = canceladas.length === 0;
 		btnExportar.disabled = finalizadas.length === 0;
@@ -272,7 +363,7 @@ import { ruta } from '../lib/rutas';
 		}
 		void pedirAlmacenamientoPersistente();
 		await refrescar();
-		avisar('Venta finalizada');
+		avisar('Venta finalizada', { texto: 'Ver ventas del día', alTocar: () => mostrarPestana('dia') });
 	}
 
 	async function cancelar(venta: Venta) {
@@ -404,7 +495,7 @@ import { ruta } from '../lib/rutas';
 		gap: 1.25rem;
 		max-width: 640px;
 		margin: 0 auto;
-		padding: 1.25rem 1rem calc(5rem + env(safe-area-inset-bottom));
+		padding: 1.25rem 1rem calc(6.5rem + env(safe-area-inset-bottom));
 	}
 
 	/* --- Resumen del día --- */
@@ -489,24 +580,36 @@ import { ruta } from '../lib/rutas';
 		padding: 0.25rem 0 0;
 	}
 
-	.carrusel-cabecera {
+	/* Todo lo de adentro del carrusel se crea con JS (src/lib/ui/lista.ts),
+	   por eso va con :global: los estilos con alcance de Astro no lo alcanzan. */
+	.carrusel :global(.lista-vacia),
+	.lista :global(.lista-vacia) {
+		padding: 1.5rem 1rem;
+		border: 1.5px dashed #d5d5dd;
+		border-radius: var(--radio);
+		color: var(--texto-suave);
+		text-align: center;
+		line-height: 1.5;
+	}
+
+	.carrusel :global(.carrusel-cabecera) {
 		display: grid;
 		grid-template-columns: 44px 1fr 44px;
 		align-items: center;
 		gap: 0.5rem;
-		margin-bottom: 0.55rem;
+		margin-bottom: 0.35rem;
 	}
 
-	.carrusel-estado {
+	.carrusel :global(.carrusel-estado) {
 		text-align: center;
 		font-size: 0.85rem;
 		font-weight: 600;
 		color: var(--texto-suave);
 	}
 
-	.carrusel-control {
-		width: 40px;
-		height: 40px;
+	.carrusel :global(.carrusel-control) {
+		width: 44px;
+		height: 44px;
 		border: 0;
 		border-radius: 50%;
 		background: var(--superficie);
@@ -518,23 +621,73 @@ import { ruta } from '../lib/rutas';
 		cursor: pointer;
 	}
 
-	.carrusel-control:disabled {
+	.carrusel :global(.carrusel-control:disabled) {
 		opacity: 0.35;
 		cursor: default;
 	}
 
-	.carrusel-ventana {
-		overflow: hidden;
-		border-radius: var(--radio);
-		touch-action: pan-y;
-	}
-
-	.carrusel-pista {
+	/* Hojas que se pasan con el dedo: scroll nativo + scroll-snap. Se asoma el
+	   borde de la hoja vecina para que se note que hay más. */
+	.carrusel :global(.carrusel-ventana) {
+		position: relative;
 		display: flex;
-		transition: transform 220ms cubic-bezier(0.22, 0.7, 0.25, 1);
+		align-items: flex-start;
+		gap: 0.6rem;
+		margin: 0 -1rem;
+		/* 2rem a cada lado: la hoja queda centrada y se asoman las vecinas. */
+		padding: 0.5rem 2rem 0.9rem;
+		overflow-x: auto;
+		overscroll-behavior-x: contain;
+		scroll-snap-type: x mandatory;
+		scrollbar-width: none;
 	}
 
-	.venta-abierta {
+	.carrusel :global(.carrusel-ventana::-webkit-scrollbar) {
+		display: none;
+	}
+
+	.carrusel :global(.carrusel-ventana:focus-visible) {
+		outline: 3px solid rgb(0 174 195 / 0.5);
+		outline-offset: -3px;
+	}
+
+	.carrusel :global(.carrusel-puntos) {
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: center;
+		gap: 0.15rem;
+	}
+
+	.carrusel :global(.carrusel-puntos:empty) {
+		display: none;
+	}
+
+	/* El área táctil es de 32 px aunque el punto se vea chico. */
+	.carrusel :global(.carrusel-punto) {
+		width: 32px;
+		height: 32px;
+		border: 0;
+		background: none;
+		display: grid;
+		place-items: center;
+		cursor: pointer;
+	}
+
+	.carrusel :global(.carrusel-punto::before) {
+		content: '';
+		width: 8px;
+		height: 8px;
+		border-radius: 999px;
+		background: #cfcfd8;
+		transition: width 200ms ease, background-color 200ms ease;
+	}
+
+	.carrusel :global(.carrusel-punto[aria-current='true']::before) {
+		width: 22px;
+		background: var(--rosa);
+	}
+
+	.carrusel :global(.venta-abierta) {
 		flex: 0 0 100%;
 		min-width: 0;
 		padding: 1rem;
@@ -542,9 +695,20 @@ import { ruta } from '../lib/rutas';
 		border-radius: var(--radio);
 		background: var(--superficie);
 		box-shadow: 0 4px 14px rgb(0 0 0 / 0.06);
+		scroll-snap-align: center;
+		scroll-snap-stop: always;
+		opacity: 0.55;
+		transform: scale(0.95);
+		transition: transform 220ms cubic-bezier(0.22, 0.7, 0.25, 1), opacity 220ms ease;
 	}
 
-	.cliente-campo {
+	.carrusel :global(.venta-abierta.activa) {
+		opacity: 1;
+		transform: none;
+		box-shadow: 0 6px 18px rgb(0 0 0 / 0.09);
+	}
+
+	.carrusel :global(.cliente-campo) {
 		display: grid;
 		gap: 0.35rem;
 		font-size: 0.8rem;
@@ -552,7 +716,7 @@ import { ruta } from '../lib/rutas';
 		color: var(--texto-suave);
 	}
 
-	.cliente-campo input {
+	.carrusel :global(.cliente-campo input) {
 		width: 100%;
 		padding: 0.7rem 0.8rem;
 		border: 1.5px solid #e2e2e8;
@@ -563,21 +727,19 @@ import { ruta } from '../lib/rutas';
 		background: #fff;
 	}
 
-	.venta-hora,
+	.carrusel :global(.venta-hora),
 	.ayuda-ventas {
 		margin-top: 0.65rem;
 		font-size: 0.82rem;
 		color: var(--texto-suave);
 	}
 
-	.productos-abiertos,
-	.historial-productos {
+	.carrusel :global(.productos-abiertos) {
 		list-style: none;
 		margin-top: 0.6rem;
 	}
 
-	.productos-abiertos li,
-	.historial-productos li {
+	.carrusel :global(.productos-abiertos li) {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
@@ -587,18 +749,18 @@ import { ruta } from '../lib/rutas';
 		font-size: 0.9rem;
 	}
 
-	.productos-abiertos li > span:first-child {
+	.carrusel :global(.productos-abiertos li > span:first-child) {
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
 
-	.producto-pendiente {
+	.carrusel :global(.producto-pendiente) {
 		color: var(--texto-suave);
 		line-height: 1.4;
 	}
 
-	.venta-abierta-pie {
+	.carrusel :global(.venta-abierta-pie) {
 		display: flex;
 		justify-content: space-between;
 		padding: 0.7rem 0;
@@ -606,19 +768,19 @@ import { ruta } from '../lib/rutas';
 		color: var(--texto-suave);
 	}
 
-	.venta-abierta-pie strong {
+	.carrusel :global(.venta-abierta-pie strong) {
 		color: var(--texto);
 		font-size: 1.1rem;
 	}
 
-	.venta-abierta-acciones {
+	.carrusel :global(.venta-abierta-acciones) {
 		display: grid;
 		grid-template-columns: 2fr 1fr;
 		gap: 0.6rem;
 		margin-top: 0.25rem;
 	}
 
-	.venta-abierta-acciones button {
+	.carrusel :global(.venta-abierta-acciones button) {
 		min-height: 44px;
 		padding: 0.65rem 0.8rem;
 		border: 0;
@@ -628,17 +790,17 @@ import { ruta } from '../lib/rutas';
 		cursor: pointer;
 	}
 
-	.boton-finalizar {
+	.carrusel :global(.boton-finalizar) {
 		background: var(--degrade);
 		color: #fff;
 	}
 
-	.boton-finalizar:disabled {
+	.carrusel :global(.boton-finalizar:disabled) {
 		opacity: 0.45;
 		cursor: default;
 	}
 
-	.boton-cancelar-venta {
+	.carrusel :global(.boton-cancelar-venta) {
 		background: #f5f4f7;
 		color: var(--texto-suave);
 	}
@@ -775,15 +937,6 @@ import { ruta } from '../lib/rutas';
 	.lista {
 		display: grid;
 		gap: 1.25rem;
-	}
-
-	.lista :global(.lista-vacia) {
-		padding: 1.5rem 1rem;
-		border: 1.5px dashed #d5d5dd;
-		border-radius: var(--radio);
-		color: var(--texto-suave);
-		text-align: center;
-		line-height: 1.5;
 	}
 
 	.lista :global(.dia h3) {
@@ -988,24 +1141,107 @@ import { ruta } from '../lib/rutas';
 		font-weight: 600;
 	}
 
-	.canceladas-lista {
+	.canceladas-panel :global(.canceladas-lista) {
 		list-style: none;
 		margin-top: 0.75rem;
 	}
 
-	.canceladas-lista li {
+	.canceladas-panel :global(.canceladas-lista li) {
 		display: grid;
 		gap: 0.2rem;
 		padding: 0.6rem 0;
 		border-top: 1px solid #eeeef2;
 	}
 
-	.canceladas-lista small {
+	.canceladas-panel :global(.canceladas-lista small) {
 		font-size: 0.78rem;
 	}
 
+	.anteriores {
+		margin-top: 0.75rem;
+	}
+
+	.destino-carga {
+		font-size: 0.85rem;
+		font-weight: 600;
+		color: #00838f;
+		text-align: center;
+	}
+
+	/* --- Pestañas abajo, al alcance del pulgar --- */
+	.panel {
+		display: grid;
+		gap: 1.25rem;
+		min-width: 0;
+	}
+
+	.pestanas {
+		position: fixed;
+		inset: auto 0 0;
+		z-index: 40;
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		padding: 0.35rem 0.5rem max(0.35rem, env(safe-area-inset-bottom));
+		background: rgb(255 255 255 / 0.96);
+		border-top: 1px solid #ececf1;
+		box-shadow: 0 -4px 16px rgb(0 0 0 / 0.05);
+	}
+
+	.pestana {
+		position: relative;
+		display: grid;
+		justify-items: center;
+		gap: 0.15rem;
+		min-height: 56px;
+		padding: 0.4rem;
+		border: 0;
+		border-radius: 12px;
+		background: none;
+		color: var(--texto-suave);
+		font: inherit;
+		font-size: 0.8rem;
+		font-weight: 600;
+		cursor: pointer;
+	}
+
+	.pestana svg {
+		width: 26px;
+		height: 26px;
+		fill: none;
+		stroke: currentColor;
+		stroke-width: 1.8;
+		stroke-linecap: round;
+		stroke-linejoin: round;
+	}
+
+	.pestana[aria-selected='true'] {
+		color: var(--rosa);
+		background: #fdeef5;
+	}
+
+	.pestana:focus-visible {
+		outline: 3px solid rgb(0 174 195 / 0.5);
+		outline-offset: -3px;
+	}
+
+	.contador {
+		position: absolute;
+		top: 0.25rem;
+		left: calc(50% + 8px);
+		min-width: 20px;
+		height: 20px;
+		padding: 0 5px;
+		border-radius: 999px;
+		background: var(--celeste);
+		color: #fff;
+		font-size: 0.72rem;
+		line-height: 20px;
+		text-align: center;
+	}
+
 	@media (prefers-reduced-motion: reduce) {
-		.carrusel-pista {
+		.carrusel :global(.venta-abierta),
+		.carrusel :global(.carrusel-punto::before) {
 			transition: none;
 		}
 	}
@@ -1014,7 +1250,7 @@ import { ruta } from '../lib/rutas';
 	.aviso {
 		position: fixed;
 		left: 50%;
-		bottom: max(1rem, env(safe-area-inset-bottom));
+		bottom: calc(5rem + env(safe-area-inset-bottom));
 		z-index: 60;
 		transform: translateX(-50%);
 		width: min(92vw, 480px);
