@@ -105,9 +105,9 @@ El proyecto usa [Bun](https://bun.sh) y el único lockfile es `bun.lock`. No se 
 
 La app la usan personas mayores en el puesto, con las manos ocupadas. Tiene que ser simple, grande y obvia.
 
-- **Prohibido el desplazamiento vertical** (de arriba a abajo) en toda la app. La única excepción, por ahora, es "Ventas del día".
+- **Prohibido que se desplace una vista entera** de arriba a abajo. La única excepción, por ahora, es "Ventas del día".
+- **Dentro de una tarjeta sí se puede desplazar**: por ejemplo, la lista de productos de una venta (alguien puede comprar 40 quesos) o la de pagos al cobrar. La pantalla queda quieta y se mueve solo esa lista.
 - El **deslizamiento horizontal** entre hojas (como las ventas abiertas) sí está bien y es la forma de cambiar de venta.
-- Si algo no entra, se resume (por ejemplo, "+ 3 productos más") o se compacta; nunca se agrega scroll.
 - Probar siempre en tamaños de celular: 375×667 y 360×560 como mínimo.
 - Textos y botones grandes, al alcance del pulgar (abajo), con áreas táctiles de 44 px o más.
 
