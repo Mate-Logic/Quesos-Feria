@@ -25,7 +25,16 @@ import { ruta } from '../lib/rutas';
 			<ul id="resumen-marcas" class="resumen-marcas" aria-label="Total por marca"></ul>
 		</section>
 
-		<section class="acciones" aria-label="Anotar una venta">
+		<section class="ventas-abiertas" aria-labelledby="abiertas-titulo">
+			<header class="ventas-cabecera">
+				<h2 id="abiertas-titulo">Ventas abiertas</h2>
+				<button id="btn-nueva-venta" class="boton-nueva-venta" type="button">+ Nueva venta</button>
+			</header>
+			<div id="carrusel-abiertas" class="carrusel"></div>
+			<p class="ayuda-ventas">La venta visible recibe los productos que cargues abajo. Deslizá para cambiar de cliente; al cobrar, finalizala.</p>
+		</section>
+
+		<section class="acciones" aria-label="Cargar productos en la venta visible o iniciar una nueva">
 			<button id="btn-camara" class="accion principal" type="button" hidden>
 				<svg viewBox="0 0 24 24" aria-hidden="true">
 					<path d="M4 8a2 2 0 0 1 2-2h2l1.5-2h5L16 6h2a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"></path>
@@ -61,7 +70,7 @@ import { ruta } from '../lib/rutas';
 
 		<section class="ventas" aria-labelledby="ventas-titulo">
 			<header class="ventas-cabecera">
-				<h2 id="ventas-titulo">Ventas</h2>
+				<h2 id="ventas-titulo">Ventas finalizadas</h2>
 				<button id="btn-exportar" class="exportar" type="button" disabled>
 					<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"></path></svg>
 					Exportar
@@ -69,6 +78,11 @@ import { ruta } from '../lib/rutas';
 			</header>
 			<div id="lista-ventas" class="lista"></div>
 		</section>
+
+		<details id="canceladas-panel" class="canceladas-panel" hidden>
+			<summary>Ventas canceladas</summary>
+			<div id="lista-canceladas"></div>
+		</details>
 	</main>
 
 	<div id="aviso" class="aviso" role="status" aria-live="polite" hidden></div>
@@ -80,20 +94,28 @@ import { ruta } from '../lib/rutas';
 <script>
 	import { abrirCamara, esCelular, hayCamara } from '../lib/ui/camara';
 	import { abrirRevision } from '../lib/ui/revision';
-	import { avisar, dibujarLista, dibujarResumen } from '../lib/ui/lista';
+	import { avisar, dibujarCanceladas, dibujarLista, dibujarResumen, dibujarVentasAbiertas } from '../lib/ui/lista';
 	import { leerFoto, prepararLector } from '../lib/tickets/lector';
 	import {
 		borrarVenta,
+		actualizarVenta,
+		borrarVentaVacia,
 		guardarVenta,
 		listarProductos,
 		listarVentas,
+		nuevoId,
 		pedirAlmacenamientoPersistente,
 		type Producto,
+		type ProductoVenta,
 		type Venta,
 	} from '../lib/ventas/db';
 	import { exportarVentas } from '../lib/ventas/exportar';
 
 	const lista = document.getElementById('lista-ventas')!;
+	const abiertas = document.getElementById('carrusel-abiertas')!;
+	const listaCanceladas = document.getElementById('lista-canceladas')!;
+	const canceladasPanel = document.getElementById('canceladas-panel') as HTMLDetailsElement;
+	const btnNuevaVenta = document.getElementById('btn-nueva-venta') as HTMLButtonElement;
 	const btnCamara = document.getElementById('btn-camara') as HTMLButtonElement;
 	const btnGaleria = document.getElementById('btn-galeria')!;
 	const inputGaleria = document.getElementById('input-galeria') as HTMLInputElement;
@@ -103,6 +125,7 @@ import { ruta } from '../lib/rutas';
 
 	let ventas: Venta[] = [];
 	let productos: Producto[] = [];
+	let ventaActivaId: string | null = null;
 
 	// En el celular: cámara de la app + galería. En la PC: solo cargar una foto.
 	if (esCelular()) {
@@ -113,24 +136,87 @@ import { ruta } from '../lib/rutas';
 	}
 
 	const ULTIMA_MARCA = 'ultima-marca';
+	const abiertasActuales = () => ventas.filter((v) => v.estado === 'abierta');
+	const ventaActiva = () => abiertasActuales().find((v) => v.id === ventaActivaId);
 
 	async function refrescar() {
 		[ventas, productos] = await Promise.all([listarVentas(), listarProductos()]);
+		const pendientes = abiertasActuales();
+		if (!pendientes.some((v) => v.id === ventaActivaId)) ventaActivaId = pendientes[0]?.id ?? null;
+		const finalizadas = ventas.filter((v) => v.estado === 'finalizada');
+		const canceladas = ventas.filter((v) => v.estado === 'cancelada');
 		dibujarResumen(ventas);
-		dibujarLista(lista, ventas, { alEditar: editar, alBorrar: borrar });
-		btnExportar.disabled = ventas.length === 0;
+		dibujarVentasAbiertas(abiertas, pendientes, ventaActivaId, {
+			alSeleccionar(id) {
+				ventaActivaId = id;
+			},
+			alCambiarCliente: (venta, cliente) =>
+				void ejecutar(() => cambiarCliente(venta, cliente), 'No se pudo guardar el cliente. Intentá de nuevo.'),
+			alFinalizar: (venta) => void ejecutar(() => finalizar(venta), 'No se pudo finalizar la venta. Intentá de nuevo.'),
+			alCancelar: (venta) => void ejecutar(() => cancelar(venta), 'No se pudo cancelar la venta. Intentá de nuevo.'),
+		});
+		dibujarLista(lista, finalizadas, {
+			alEditar: (venta, producto) =>
+				void ejecutar(() => editar(venta, producto), 'No se pudieron guardar los cambios. Intentá de nuevo.'),
+			alBorrar: (venta) => void ejecutar(() => borrar(venta), 'No se pudo borrar la venta. Intentá de nuevo.'),
+		});
+		dibujarCanceladas(listaCanceladas, canceladas);
+		canceladasPanel.hidden = canceladas.length === 0;
+		btnExportar.disabled = finalizadas.length === 0;
 	}
 
-	async function guardar(venta: Venta, mensaje: string) {
+	async function ejecutar(accion: () => Promise<void>, mensaje: string) {
+		try {
+			await accion();
+		} catch (error) {
+			console.error(error);
+			avisar(mensaje);
+		}
+	}
+
+	async function guardar(venta: Venta, mensaje: string, marca?: string) {
 		await guardarVenta(venta);
-		localStorage.setItem(ULTIMA_MARCA, venta.marca);
+		if (marca) localStorage.setItem(ULTIMA_MARCA, marca);
 		void pedirAlmacenamientoPersistente();
 		await refrescar();
 		avisar(mensaje);
 	}
 
+	async function guardarProducto(producto: ProductoVenta, destinoId: string | null) {
+		if (destinoId) {
+			const existente = await actualizarVenta(destinoId, (actual) =>
+				actual.estado === 'abierta' ? { ...actual, productos: [...actual.productos, producto] } : null,
+			);
+			if (!existente || existente.estado !== 'abierta') {
+				avisar('Esa venta ya no está abierta. Elegí otra venta para agregar el producto.');
+				await refrescar();
+				return;
+			}
+			localStorage.setItem(ULTIMA_MARCA, producto.marca);
+			void pedirAlmacenamientoPersistente();
+			await refrescar();
+			avisar('Producto agregado a la venta abierta');
+			return;
+		}
+		const nueva: Venta = {
+			id: nuevoId(),
+			creada: Date.now(),
+			cliente: '',
+			estado: 'abierta',
+			productos: [producto],
+		};
+		ventaActivaId = nueva.id;
+		await guardar(nueva, 'Producto agregado a una nueva venta abierta', producto.marca);
+	}
+
 	async function procesarFoto(foto: Blob | HTMLCanvasElement, desdeCamara: boolean) {
-		const control = abrirRevision({ origen: 'ticket', productos, marcaSugerida: localStorage.getItem(ULTIMA_MARCA) });
+		const destino = ventaActiva();
+		const control = abrirRevision({
+			venta: destino,
+			origen: 'ticket',
+			productos,
+			marcaSugerida: localStorage.getItem(ULTIMA_MARCA),
+		});
 		leerFoto(foto, {
 			desdeCamara,
 			conocidos: productos.map((p) => ({ nombre: p.nombre, precioKg: p.precioKg ?? undefined })),
@@ -141,63 +227,142 @@ import { ruta } from '../lib/rutas';
 				console.error('No se pudo leer el ticket', error);
 				control.fallo(
 					navigator.onLine
-						? 'No se pudo leer la foto. Cargá los datos a mano mirando el ticket.'
+						? 'No se pudo leer la foto. Cargá los datos a mano mirando la etiqueta.'
 						: 'El lector todavía no está guardado en el celular: abrí la app una vez con internet. Mientras, cargá los datos a mano.',
 				);
 			});
-		const venta = await control.resultado;
-		if (venta) await guardar(venta, 'Venta guardada');
+		const resultado = await control.resultado;
+		if (resultado) await guardarProducto(resultado.producto, destino?.id ?? null);
 	}
 
-	async function editar(venta: Venta) {
-		const control = abrirRevision({ venta, origen: venta.origen, productos });
-		const editada = await control.resultado;
-		if (editada) await guardar(editada, 'Cambios guardados');
+	async function agregarManual() {
+		const destino = ventaActiva();
+		const control = abrirRevision({
+			venta: destino,
+			origen: 'manual',
+			productos,
+			marcaSugerida: localStorage.getItem(ULTIMA_MARCA),
+		});
+		const resultado = await control.resultado;
+		if (resultado) await guardarProducto(resultado.producto, destino?.id ?? null);
+	}
+
+	async function crearVenta() {
+		const nueva: Venta = { id: nuevoId(), creada: Date.now(), cliente: '', estado: 'abierta', productos: [] };
+		ventaActivaId = nueva.id;
+		await guardar(nueva, 'Venta abierta. Agregale productos y finalizala al cobrar.');
+	}
+
+	async function cambiarCliente(venta: Venta, cliente: string) {
+		const actualizada = await actualizarVenta(venta.id, (actual) => (actual.estado === 'abierta' ? { ...actual, cliente } : null));
+		await refrescar();
+		if (actualizada?.estado !== 'abierta') avisar('Esa venta ya no está abierta.');
+	}
+
+	async function finalizar(venta: Venta) {
+		const actualizada = await actualizarVenta(venta.id, (actual) =>
+			actual.estado === 'abierta' && actual.productos.length
+				? { ...actual, estado: 'finalizada', finalizada: Date.now() }
+				: null,
+		);
+		if (actualizada?.estado !== 'finalizada') {
+			avisar('No se pudo finalizar: agregá al menos un producto y volvé a intentar.');
+			await refrescar();
+			return;
+		}
+		void pedirAlmacenamientoPersistente();
+		await refrescar();
+		avisar('Venta finalizada');
+	}
+
+	async function cancelar(venta: Venta) {
+		if (venta.productos.length === 0) {
+			const eliminada = await borrarVentaVacia(venta.id);
+			await refrescar();
+			avisar(eliminada ? 'Se cerró la venta vacía' : 'La venta ya cambió; revisá la venta activa.');
+			return;
+		}
+		const nombre = venta.cliente ? `de ${venta.cliente}` : 'sin cliente identificado';
+		if (!window.confirm(`¿Cancelar la venta ${nombre}? No se contará en los totales.`)) return;
+		const actualizada = await actualizarVenta(venta.id, (actual) => (actual.estado === 'abierta' ? { ...actual, estado: 'cancelada' } : null));
+		await refrescar();
+		avisar(actualizada?.estado === 'cancelada' ? 'Venta cancelada' : 'Esa venta ya no está abierta.');
+	}
+
+	async function editar(venta: Venta, producto: ProductoVenta) {
+		const control = abrirRevision({ venta, productoVenta: producto, origen: producto.origen, productos });
+		const resultado = await control.resultado;
+		if (!resultado) return;
+		const actualizada = await actualizarVenta(venta.id, (actual) => {
+			if (actual.estado !== 'finalizada' || !actual.productos.some((p) => p.id === producto.id)) return null;
+			return {
+				...actual,
+				productos: actual.productos.map((p) => (p.id === producto.id ? resultado.producto : p)),
+			};
+		});
+		const guardado = actualizada?.productos.some(
+			(p) => p.id === producto.id && p.producto === resultado.producto.producto && p.total === resultado.producto.total,
+		);
+		if (actualizada?.estado !== 'finalizada' || !guardado) {
+			avisar('La venta cambió y no se pudieron guardar los cambios.');
+			await refrescar();
+			return;
+		}
+		localStorage.setItem(ULTIMA_MARCA, resultado.marca);
+		await refrescar();
+		avisar('Cambios guardados');
 	}
 
 	async function borrar(venta: Venta) {
+		const detalle = venta.cliente ? `de ${venta.cliente}` : 'seleccionada';
+		if (!window.confirm(`¿Borrar la venta ${detalle} del historial?`)) return;
 		await borrarVenta(venta.id);
 		await refrescar();
-		avisar(`Se borró ${venta.producto}`, {
-			texto: 'Deshacer',
-			alTocar: () => void guardar(venta, 'Venta recuperada'),
-		});
+		avisar('Venta borrada');
 	}
 
-	btnCamara.addEventListener('click', async () => {
-		void prepararLector().catch(() => {});
-		if (!hayCamara()) {
-			inputCamaraSistema.click();
-			return;
-		}
-		const elegida = await abrirCamara();
-		if (elegida) await procesarFoto(elegida.foto, elegida.tipo === 'camara');
+	btnNuevaVenta.addEventListener('click', () => void ejecutar(crearVenta, 'No se pudo iniciar una venta. Intentá de nuevo.'));
+
+	btnCamara.addEventListener('click', () => {
+		void ejecutar(async () => {
+			void prepararLector().catch(() => {});
+			if (!hayCamara()) {
+				inputCamaraSistema.click();
+				return;
+			}
+			const elegida = await abrirCamara();
+			if (elegida) await procesarFoto(elegida.foto, elegida.tipo === 'camara');
+		}, 'No se pudo abrir la cámara. Podés elegir una foto o cargar a mano.');
 	});
 
 	inputCamaraSistema.addEventListener('change', () => {
 		const archivo = inputCamaraSistema.files?.[0];
 		inputCamaraSistema.value = '';
-		if (archivo) void procesarFoto(archivo, false);
+		if (archivo) void ejecutar(() => procesarFoto(archivo, false), 'No se pudo agregar el producto. Intentá de nuevo.');
 	});
 
 	btnGaleria.addEventListener('click', () => void prepararLector().catch(() => {}));
 	inputGaleria.addEventListener('change', () => {
 		const archivo = inputGaleria.files?.[0];
 		inputGaleria.value = '';
-		if (archivo) void procesarFoto(archivo, false);
+		if (archivo) void ejecutar(() => procesarFoto(archivo, false), 'No se pudo agregar el producto. Intentá de nuevo.');
 	});
 
-	btnManual.addEventListener('click', async () => {
-		const control = abrirRevision({ origen: 'manual', productos, marcaSugerida: localStorage.getItem(ULTIMA_MARCA) });
-		const venta = await control.resultado;
-		if (venta) await guardar(venta, 'Venta guardada');
-	});
-
-	btnExportar.addEventListener('click', () => void exportarVentas(ventas));
+	btnManual.addEventListener('click', () =>
+		void ejecutar(agregarManual, 'No se pudo agregar el producto. Intentá de nuevo.'),
+	);
+	btnExportar.addEventListener('click', () =>
+		void ejecutar(() => exportarVentas(ventas.filter((v) => v.estado === 'finalizada')), 'No se pudo exportar las ventas.'),
+	);
 
 	// Al pasar la medianoche (feria nocturna) o volver a la app, el resumen de "hoy" se actualiza.
 	document.addEventListener('visibilitychange', () => {
-		if (document.visibilityState === 'visible') void refrescar();
+		if (document.visibilityState === 'visible') {
+			void refrescar().catch((error) => {
+				console.error(error);
+				avisar('No se pudieron actualizar las ventas guardadas.');
+			});
+		}
 	});
 
 	refrescar().catch((error) => {
@@ -300,6 +465,182 @@ import { ruta } from '../lib/rutas';
 
 	.resumen-marcas :global(strong) {
 		margin-left: auto;
+	}
+
+	/* --- Ventas abiertas: selector liviano con gesto y transición por transform --- */
+	.ventas-abiertas {
+		min-width: 0;
+	}
+
+	.boton-nueva-venta {
+		padding: 0.55rem 0.9rem;
+		border: 0;
+		border-radius: 999px;
+		background: var(--degrade);
+		color: #fff;
+		font: inherit;
+		font-size: 0.88rem;
+		font-weight: 700;
+		cursor: pointer;
+	}
+
+	.carrusel {
+		min-width: 0;
+		padding: 0.25rem 0 0;
+	}
+
+	.carrusel-cabecera {
+		display: grid;
+		grid-template-columns: 44px 1fr 44px;
+		align-items: center;
+		gap: 0.5rem;
+		margin-bottom: 0.55rem;
+	}
+
+	.carrusel-estado {
+		text-align: center;
+		font-size: 0.85rem;
+		font-weight: 600;
+		color: var(--texto-suave);
+	}
+
+	.carrusel-control {
+		width: 40px;
+		height: 40px;
+		border: 0;
+		border-radius: 50%;
+		background: var(--superficie);
+		color: var(--texto);
+		font: inherit;
+		font-size: 1.8rem;
+		line-height: 1;
+		box-shadow: 0 2px 8px rgb(0 0 0 / 0.08);
+		cursor: pointer;
+	}
+
+	.carrusel-control:disabled {
+		opacity: 0.35;
+		cursor: default;
+	}
+
+	.carrusel-ventana {
+		overflow: hidden;
+		border-radius: var(--radio);
+		touch-action: pan-y;
+	}
+
+	.carrusel-pista {
+		display: flex;
+		transition: transform 220ms cubic-bezier(0.22, 0.7, 0.25, 1);
+	}
+
+	.venta-abierta {
+		flex: 0 0 100%;
+		min-width: 0;
+		padding: 1rem;
+		border: 1px solid rgb(0 174 195 / 0.2);
+		border-radius: var(--radio);
+		background: var(--superficie);
+		box-shadow: 0 4px 14px rgb(0 0 0 / 0.06);
+	}
+
+	.cliente-campo {
+		display: grid;
+		gap: 0.35rem;
+		font-size: 0.8rem;
+		font-weight: 600;
+		color: var(--texto-suave);
+	}
+
+	.cliente-campo input {
+		width: 100%;
+		padding: 0.7rem 0.8rem;
+		border: 1.5px solid #e2e2e8;
+		border-radius: 10px;
+		font: inherit;
+		font-size: 1rem;
+		color: var(--texto);
+		background: #fff;
+	}
+
+	.venta-hora,
+	.ayuda-ventas {
+		margin-top: 0.65rem;
+		font-size: 0.82rem;
+		color: var(--texto-suave);
+	}
+
+	.productos-abiertos,
+	.historial-productos {
+		list-style: none;
+		margin-top: 0.6rem;
+	}
+
+	.productos-abiertos li,
+	.historial-productos li {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.75rem;
+		padding: 0.6rem 0;
+		border-bottom: 1px solid #f0f0f3;
+		font-size: 0.9rem;
+	}
+
+	.productos-abiertos li > span:first-child {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.producto-pendiente {
+		color: var(--texto-suave);
+		line-height: 1.4;
+	}
+
+	.venta-abierta-pie {
+		display: flex;
+		justify-content: space-between;
+		padding: 0.7rem 0;
+		font-size: 0.9rem;
+		color: var(--texto-suave);
+	}
+
+	.venta-abierta-pie strong {
+		color: var(--texto);
+		font-size: 1.1rem;
+	}
+
+	.venta-abierta-acciones {
+		display: grid;
+		grid-template-columns: 2fr 1fr;
+		gap: 0.6rem;
+		margin-top: 0.25rem;
+	}
+
+	.venta-abierta-acciones button {
+		min-height: 44px;
+		padding: 0.65rem 0.8rem;
+		border: 0;
+		border-radius: 999px;
+		font: inherit;
+		font-weight: 700;
+		cursor: pointer;
+	}
+
+	.boton-finalizar {
+		background: var(--degrade);
+		color: #fff;
+	}
+
+	.boton-finalizar:disabled {
+		opacity: 0.45;
+		cursor: default;
+	}
+
+	.boton-cancelar-venta {
+		background: #f5f4f7;
+		color: var(--texto-suave);
 	}
 
 	/* --- Acciones --- */
@@ -550,6 +891,123 @@ import { ruta } from '../lib/rutas';
 		stroke-width: 1.8;
 		stroke-linecap: round;
 		stroke-linejoin: round;
+	}
+
+	.lista :global(.historial-ventas) {
+		list-style: none;
+		border-radius: var(--radio);
+		background: var(--superficie);
+		box-shadow: 0 2px 10px rgb(0 0 0 / 0.05);
+		overflow: hidden;
+	}
+
+	.lista :global(.venta-historial) {
+		padding: 0.75rem 0.9rem;
+	}
+
+	.lista :global(.venta-historial + .venta-historial) {
+		border-top: 1px solid #eeeef2;
+	}
+
+	.lista :global(.venta-historial-cabecera) {
+		display: flex;
+		justify-content: space-between;
+		gap: 0.75rem;
+		font-size: 0.92rem;
+	}
+
+	.lista :global(.historial-productos) {
+		margin: 0.35rem 0 0;
+		padding: 0;
+		border-radius: 0;
+		background: none;
+		box-shadow: none;
+		overflow: visible;
+	}
+
+	.lista :global(.historial-productos li) {
+		padding: 0;
+		border: 0;
+	}
+
+	.lista :global(.historial-producto) {
+		width: 100%;
+		min-width: 0;
+		display: flex;
+		align-items: center;
+		gap: 0.6rem;
+		padding: 0.45rem 0;
+		border: 0;
+		background: none;
+		color: inherit;
+		font: inherit;
+		text-align: left;
+		cursor: pointer;
+	}
+
+	.lista :global(.historial-producto-info) {
+		flex: 1;
+		min-width: 0;
+		display: grid;
+	}
+
+	.lista :global(.historial-producto-info strong),
+	.lista :global(.historial-producto-info small) {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.lista :global(.historial-producto-info small) {
+		color: var(--texto-suave);
+		font-size: 0.78rem;
+	}
+
+	.lista :global(.borrar-venta) {
+		margin-top: 0.4rem;
+		padding: 0.3rem 0;
+		border: 0;
+		background: none;
+		color: var(--texto-suave);
+		font: inherit;
+		font-size: 0.8rem;
+		text-decoration: underline;
+		cursor: pointer;
+	}
+
+	.canceladas-panel {
+		padding: 0.8rem 1rem;
+		border-radius: var(--radio);
+		background: var(--superficie);
+		color: var(--texto-suave);
+		font-size: 0.9rem;
+	}
+
+	.canceladas-panel summary {
+		cursor: pointer;
+		font-weight: 600;
+	}
+
+	.canceladas-lista {
+		list-style: none;
+		margin-top: 0.75rem;
+	}
+
+	.canceladas-lista li {
+		display: grid;
+		gap: 0.2rem;
+		padding: 0.6rem 0;
+		border-top: 1px solid #eeeef2;
+	}
+
+	.canceladas-lista small {
+		font-size: 0.78rem;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.carrusel-pista {
+			transition: none;
+		}
 	}
 
 	/* --- Aviso --- */

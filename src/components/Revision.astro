@@ -1,5 +1,5 @@
 ---
-// Hoja para revisar lo que se leyó del ticket (o cargar una venta a mano)
+// Hoja para revisar un producto leído del ticket o cargado a mano
 // antes de guardarla. Se controla desde src/lib/ui/revision.ts.
 import { MARCAS } from '../lib/marcas';
 ---
@@ -7,7 +7,7 @@ import { MARCAS } from '../lib/marcas';
 <dialog id="revision" class="hoja" aria-labelledby="revision-titulo">
 	<form id="revision-form" method="dialog" novalidate>
 		<header class="cabecera">
-			<h2 id="revision-titulo">Revisá la venta</h2>
+			<h2 id="revision-titulo">Revisá el producto</h2>
 			<button class="cerrar" type="button" value="cancelar" data-cancelar aria-label="Cancelar">
 				<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg>
 			</button>
@@ -24,7 +24,7 @@ import { MARCAS } from '../lib/marcas';
 		<p id="revision-aviso" class="aviso" hidden></p>
 
 		<fieldset id="revision-campos" class="campos">
-			<legend class="visualmente-oculto">Datos de la venta</legend>
+			<legend class="visualmente-oculto">Datos del producto</legend>
 
 			<div class="campo">
 				<span class="etiqueta" id="revision-marca-titulo">Marca</span>
@@ -79,7 +79,7 @@ import { MARCAS } from '../lib/marcas';
 
 		<footer class="acciones">
 			<button class="boton secundario" type="button" data-cancelar>Cancelar</button>
-			<button id="revision-guardar" class="boton primario" type="submit" value="guardar">Guardar venta</button>
+			<button id="revision-guardar" class="boton primario" type="submit" value="guardar">Agregar producto</button>
 		</footer>
 	</form>
 </dialog>

@@ -1,16 +1,23 @@
-// Controla la hoja de revisión de src/components/Revision.astro.
+// Controla la hoja de revisión de productos de src/components/Revision.astro.
 
 import { leerNumero, numeroEditable, pesos } from '../formato';
 import { cierraLaCuenta, formatearNombre, PRODUCTOS_COMUNES, type LecturaTicket } from '../tickets/parser';
-import { nuevoId, type Producto, type Venta } from '../ventas/db';
+import { nuevoId, type Producto, type ProductoVenta, type Venta } from '../ventas/db';
 
 export interface DatosRevision {
-	/** Venta existente que se edita. */
+	/** Venta abierta a la que se agrega el producto, si corresponde. */
 	venta?: Venta;
-	origen: Venta['origen'];
+	/** Producto de una venta existente que se está editando. */
+	productoVenta?: ProductoVenta;
+	origen: ProductoVenta['origen'];
 	productos: Producto[];
-	/** Marca que se propone si no se sabe otra (la última usada). */
 	marcaSugerida?: string | null;
+}
+
+export interface ResultadoRevision {
+	producto: ProductoVenta;
+	/** Permite actualizar la marca cuando se agrega un producto a una venta abierta. */
+	marca: string;
 }
 
 export interface ControlRevision {
@@ -20,8 +27,8 @@ export interface ControlRevision {
 	completar(lectura: LecturaTicket, miniatura: Blob | null): void;
 	/** La lectura falló: se puede cargar a mano igual. */
 	fallo(mensaje: string): void;
-	/** Se resuelve con la venta lista para guardar, o `null` si se canceló. */
-	resultado: Promise<Venta | null>;
+	/** Se resuelve con el producto listo para guardar, o `null` si se canceló. */
+	resultado: Promise<ResultadoRevision | null>;
 }
 
 function marcarInvalido(campo: HTMLInputElement, invalido: boolean) {
@@ -51,18 +58,15 @@ export function abrirRevision(datos: DatosRevision): ControlRevision {
 	const precio = form.elements.namedItem('precio') as HTMLInputElement;
 	const total = form.elements.namedItem('total') as HTMLInputElement;
 
-	const { venta, origen, productos } = datos;
-	let miniatura: Blob | null = venta?.miniatura ?? null;
+	const { venta, productoVenta, origen, productos } = datos;
+	let miniatura: Blob | null = productoVenta?.miniatura ?? null;
 	let urlFoto: string | null = null;
-	/** El total se recalcula solo mientras no se lo escriba a mano. */
 	let totalAMano = false;
-	/** Una vez cerrada, la lectura que llegue tarde no tiene que tocar el formulario. */
 	let cerrado = false;
 
-	// --- Estado inicial ---------------------------------------------------
 	form.reset();
-	titulo.textContent = venta ? 'Editar venta' : origen === 'ticket' ? 'Revisá la venta' : 'Nueva venta';
-	guardar.textContent = venta ? 'Guardar cambios' : 'Guardar venta';
+	titulo.textContent = productoVenta ? 'Editar producto' : venta ? 'Sumar a la venta' : 'Revisá el producto';
+	guardar.textContent = productoVenta ? 'Guardar cambios' : 'Agregar producto';
 	aviso.hidden = true;
 	error.hidden = true;
 	cuenta.textContent = '';
@@ -77,19 +81,27 @@ export function abrirRevision(datos: DatosRevision): ControlRevision {
 		),
 	);
 
-	if (venta) {
-		producto.value = venta.producto;
-		peso.value = numeroEditable(venta.pesoKg);
-		precio.value = numeroEditable(venta.precioKg);
-		total.value = numeroEditable(venta.total);
+	if (productoVenta) {
+		producto.value = productoVenta.producto;
+		peso.value = numeroEditable(productoVenta.pesoKg);
+		precio.value = numeroEditable(productoVenta.precioKg);
+		total.value = numeroEditable(productoVenta.total);
 		totalAMano = true;
-		elegirMarca(venta.marca);
+		for (const radio of form.querySelectorAll<HTMLInputElement>('input[name="marca"]')) {
+			radio.checked = radio.value === productoVenta.marca;
+		}
 	} else {
-		elegirMarca(datos.marcaSugerida ?? null);
+		const marcaUltimoProducto = venta?.productos.at(-1)?.marca;
+		const marca = marcaUltimoProducto ?? datos.marcaSugerida ?? null;
+		if (marca) {
+			for (const radio of form.querySelectorAll<HTMLInputElement>('input[name="marca"]')) {
+				radio.checked = radio.value === marca;
+			}
+		}
 	}
 	mostrarFoto(miniatura);
 
-	const esperandoLectura = origen === 'ticket' && !venta;
+	const esperandoLectura = origen === 'ticket' && !productoVenta;
 	leyendo.hidden = !esperandoLectura;
 	campos.disabled = esperandoLectura;
 	guardar.disabled = esperandoLectura;
@@ -97,7 +109,6 @@ export function abrirRevision(datos: DatosRevision): ControlRevision {
 	textoLeyendo.textContent = 'Leyendo el ticket…';
 	actualizarCuenta();
 
-	// --- Cuenta en vivo ---------------------------------------------------
 	function valores() {
 		return {
 			p: leerNumero(peso.value, true),
@@ -136,7 +147,6 @@ export function abrirRevision(datos: DatosRevision): ControlRevision {
 		if (p != null && q != null && !totalAMano) {
 			total.value = numeroEditable(Math.round(p * q * 100) / 100);
 		} else if (p != null && q == null && t != null && p > 0 && e.target === peso) {
-			// Con peso y total, el precio sale de la cuenta.
 			precio.value = numeroEditable(Math.round((t / p) * 100) / 100);
 			precio.dataset.calculado = '';
 		}
@@ -148,15 +158,13 @@ export function abrirRevision(datos: DatosRevision): ControlRevision {
 		actualizarCuenta();
 	};
 
-	// --- Marca ------------------------------------------------------------
-	function elegirMarca(id: string | null) {
+	function elegirMarca(id: string) {
 		for (const radio of form.querySelectorAll<HTMLInputElement>('input[name="marca"]')) {
 			radio.checked = radio.value === id;
 		}
 	}
 
 	const alCambiarProducto = () => {
-		// Si el producto ya se vendió antes, se propone su marca y su precio.
 		const conocido = productos.find((p) => p.nombre.toLowerCase() === producto.value.trim().toLowerCase());
 		if (!conocido) return;
 		elegirMarca(conocido.marca);
@@ -181,30 +189,27 @@ export function abrirRevision(datos: DatosRevision): ControlRevision {
 		}
 	}
 
-	// --- Abrir y cerrar ---------------------------------------------------
 	peso.addEventListener('input', alCambiarPesoOPrecio);
 	precio.addEventListener('input', alCambiarPesoOPrecio);
 	total.addEventListener('input', alCambiarTotal);
 	producto.addEventListener('change', alCambiarProducto);
 
-	const resultado = new Promise<Venta | null>((resolver) => {
+	const resultado = new Promise<ResultadoRevision | null>((resolver) => {
 		const cancelar = () => dialogo.close('cancelar');
 		const botonesCancelar = form.querySelectorAll<HTMLButtonElement>('[data-cancelar]');
 		botonesCancelar.forEach((b) => b.addEventListener('click', cancelar));
 
 		const alEnviar = (e: SubmitEvent) => {
 			e.preventDefault();
-			const ventaLista = validar();
-			if (!ventaLista) return;
-			cerrarCon(ventaLista);
+			const resultado = validar();
+			if (resultado) cerrarCon(resultado);
 		};
 		form.addEventListener('submit', alEnviar);
 
-		// Escape o el gesto "atrás" de Android cierran el diálogo sin guardar.
 		const alCerrar = () => cerrarCon(null);
 		dialogo.addEventListener('close', alCerrar);
 
-		function cerrarCon(v: Venta | null) {
+		function cerrarCon(v: ResultadoRevision | null) {
 			if (cerrado) return;
 			cerrado = true;
 			form.removeEventListener('submit', alEnviar);
@@ -220,9 +225,9 @@ export function abrirRevision(datos: DatosRevision): ControlRevision {
 		}
 	});
 
-	function validar(): Venta | null {
+	function validar(): ResultadoRevision | null {
 		const { p, q, t } = valores();
-		const marca = (form.elements.namedItem('marca') as RadioNodeList).value;
+		const marca = (form.elements.namedItem('marca') as RadioNodeList).value as string;
 		const nombre = producto.value.trim();
 		const problemas: string[] = [];
 		const pesoMal = peso.value.trim() !== '' && (p == null || p <= 0);
@@ -243,20 +248,22 @@ export function abrirRevision(datos: DatosRevision): ControlRevision {
 			return null;
 		}
 		return {
-			id: venta?.id ?? nuevoId(),
-			creada: venta?.creada ?? Date.now(),
+			producto: {
+				id: productoVenta?.id ?? nuevoId(),
+				marca,
+				producto: nombre,
+				pesoKg: p,
+				precioKg: q,
+				total: t!,
+				origen,
+				miniatura,
+			},
 			marca,
-			producto: nombre,
-			pesoKg: p,
-			precioKg: q,
-			total: t!,
-			origen,
-			miniatura,
 		};
 	}
 
 	if (!dialogo.open) dialogo.showModal();
-	if (!esperandoLectura && !venta) producto.focus();
+	if (!esperandoLectura && !productoVenta) producto.focus();
 
 	return {
 		progreso(mensaje, avance) {
@@ -271,7 +278,6 @@ export function abrirRevision(datos: DatosRevision): ControlRevision {
 			leyendo.hidden = true;
 			campos.disabled = false;
 			guardar.disabled = false;
-
 			if (lectura.producto) producto.value = lectura.producto;
 			peso.value = numeroEditable(lectura.pesoKg);
 			precio.value = numeroEditable(lectura.precioKg);
@@ -289,16 +295,15 @@ export function abrirRevision(datos: DatosRevision): ControlRevision {
 				aviso.textContent = 'Leímos el ticket y la cuenta cierra. Fijate que el producto y la marca estén bien.';
 			} else if (lectura.estado === 'calculado' && lectura.calculado) {
 				delete aviso.dataset.tipo;
-				aviso.textContent = `No se leyó bien el ${NOMBRES_CAMPO[lectura.calculado]}: lo calculamos con la cuenta. Comparalo con el ticket.`;
+				aviso.textContent = `No se leyó bien el ${NOMBRES_CAMPO[lectura.calculado]}: lo calculamos con la cuenta. Comparalo con la etiqueta.`;
 			} else if (lectura.pesoKg != null && lectura.precioKg != null && lectura.total != null) {
 				delete aviso.dataset.tipo;
-				aviso.textContent = 'Leímos los números pero la cuenta no cierra: alguno está mal leído. Comparalos con el ticket.';
+				aviso.textContent = 'Leímos los números pero la cuenta no cierra: alguno está mal leído. Comparalos con la etiqueta.';
 			} else {
 				delete aviso.dataset.tipo;
 				aviso.textContent = 'No pudimos leer todo el ticket. Completá lo que falta mirando la etiqueta.';
 			}
 			actualizarCuenta();
-			// Lo primero que hay que mirar: la marca si no se sabe, si no el producto.
 			const marca = (form.elements.namedItem('marca') as RadioNodeList).value;
 			if (!producto.value) producto.focus();
 			else if (!marca) form.querySelector<HTMLInputElement>('input[name="marca"]')?.focus();

@@ -1,4 +1,4 @@
-// Exporta las ventas a CSV para abrirlas en Excel o Google Sheets.
+// Exporta las ventas finalizadas a CSV para abrirlas en Excel o Google Sheets.
 // Funciona sin conexión: el archivo se arma en el celular y se descarga o se comparte.
 
 import { marcaPorId } from '../marcas';
@@ -9,20 +9,25 @@ const HORA = new Intl.DateTimeFormat('es-AR', { hour: '2-digit', minute: '2-digi
 const DECIMAL = new Intl.NumberFormat('es-AR', { useGrouping: false, maximumFractionDigits: 3 });
 
 export function ventasACsv(ventas: Venta[]): string {
+	const finalizadas = ventas.filter((venta) => venta.estado === 'finalizada');
 	const filas = [
-		['Fecha', 'Hora', 'Marca', 'Producto', 'Peso (kg)', 'Precio por kg', 'Total', 'Origen'],
-		...[...ventas]
+		['Venta', 'Fecha', 'Hora', 'Cliente', 'Marca', 'Producto', 'Peso (kg)', 'Precio por kg', 'Total', 'Origen'],
+		...[...finalizadas]
 			.sort((a, b) => a.creada - b.creada)
-			.map((v) => [
-				FECHA.format(v.creada),
-				HORA.format(v.creada),
-				marcaPorId(v.marca)?.nombre ?? v.marca,
-				v.producto,
-				v.pesoKg == null ? '' : DECIMAL.format(v.pesoKg),
-				v.precioKg == null ? '' : DECIMAL.format(v.precioKg),
-				DECIMAL.format(v.total),
-				v.origen === 'ticket' ? 'Ticket' : 'A mano',
-			]),
+			.flatMap((venta) =>
+				venta.productos.map((producto) => [
+					venta.id,
+					FECHA.format(venta.finalizada ?? venta.creada),
+					HORA.format(venta.finalizada ?? venta.creada),
+					venta.cliente,
+					marcaPorId(producto.marca)?.nombre ?? producto.marca,
+					producto.producto,
+					producto.pesoKg == null ? '' : DECIMAL.format(producto.pesoKg),
+					producto.precioKg == null ? '' : DECIMAL.format(producto.precioKg),
+					DECIMAL.format(producto.total),
+					producto.origen === 'ticket' ? 'Ticket' : 'A mano',
+				]),
+			),
 	];
 	// Punto y coma y coma decimal: es lo que espera Excel configurado en español.
 	// El BOM hace que Excel reconozca los acentos (UTF-8).
@@ -42,7 +47,6 @@ export async function exportarVentas(ventas: Venta[]): Promise<void> {
 			await navigator.share({ files: [archivo], title: 'Ventas de feria' });
 			return;
 		} catch (error) {
-			// Si se canceló a propósito no se descarga.
 			if ((error as DOMException).name === 'AbortError') return;
 		}
 	}
