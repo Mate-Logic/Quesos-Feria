@@ -77,6 +77,8 @@ Antes del OCR, la foto se prepara (`src/lib/tickets/imagen.ts`). Se busca la eti
 
 Tesseract.js, su núcleo en WebAssembly y el modelo de español (unos 15 MB en total) se copian a `public/ocr/` en cada build (`integraciones/ocr-offline.mjs`) y el service worker los precachea. No se baja nada de un CDN.
 
+Para que escanear sea rápido, el lector se prepara solo apenas se abre la app (cuando el celular está libre) y la foto pasa directo a la lectura, sin animaciones de por medio.
+
 Las fotos de `fotos_prueba/` son tickets reales con los valores que se tienen que leer. Los tests (`tests/parser.test.ts`) usan las lecturas del OCR de esas fotos. Para sumar marcas o balanzas nuevas, conviene agregar fotos ahí.
 
 ## Estructura
@@ -141,6 +143,12 @@ Cuando se agrega un recurso nuevo, hay que verificar que quede cubierto por la c
 - **Tipografía**: Encode Sans, la misma que usa Mercados Bonaerenses.
 - **Logos**: el de Huella Pampa salió de su Instagram y solo está en 150×150 px, y el de Mamá Mecha se recortó de un cartel de su web (92×92 px); hay que reemplazarlos cuando haya versiones en alta resolución.
 - **Íconos de la app**: la bolsa de Mercados Bonaerenses sobre el degradé.
+
+## Ideas a futuro
+
+Casos posibles que todavía no se implementaron:
+
+- **Captura automática del ticket**: que la cámara saque la foto sola cuando detecta la etiqueta bien encuadrada y legible, sin tocar el botón. Requiere analizar el video en vivo (por ejemplo, buscar cada pocos cuadros la zona blanca de la etiqueta con `aislarEtiqueta` y medir nitidez y estabilidad antes de disparar), cuidando no gastar batería ni trabar los celulares más lentos.
 
 ## Cómo contribuir
 
