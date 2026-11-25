@@ -15,6 +15,7 @@ export interface AccionesVentasAbiertas {
 	alCambiarCliente(venta: Venta, cliente: string): void;
 	alFinalizar(venta: Venta): void;
 	alCancelar(venta: Venta): void;
+	alNueva(): void;
 }
 
 const totalVenta = (venta: Venta) => venta.productos.reduce((suma, producto) => suma + producto.total, 0);
@@ -78,9 +79,16 @@ export function dibujarVentasAbiertas(
 	if (!ventas.length) {
 		hojaAnterior = null;
 		centrarHojaActiva = null;
-		const vacio = document.createElement('p');
-		vacio.className = 'lista-vacia';
-		vacio.textContent = 'No hay ventas abiertas. Iniciá una cuando empieces a atender a un cliente.';
+		const vacio = document.createElement('div');
+		vacio.className = 'sin-ventas';
+		const texto = document.createElement('p');
+		texto.textContent = 'No hay ventas abiertas';
+		const ayuda = document.createElement('p');
+		ayuda.className = 'sin-ventas-ayuda';
+		ayuda.textContent = 'Empezá una venta o cargá un producto con los botones de abajo.';
+		const empezar = boton('boton-empezar', '+ Empezar venta', 'Empezar una venta nueva');
+		empezar.addEventListener('click', () => acciones.alNueva());
+		vacio.append(texto, ayuda, empezar);
 		contenedor.replaceChildren(vacio);
 		return;
 	}
@@ -99,16 +107,20 @@ export function dibujarVentasAbiertas(
 
 	const anterior = boton('carrusel-control', '‹', 'Ver la venta anterior');
 	const siguiente = boton('carrusel-control', '›', 'Ver la venta siguiente');
+	const nueva = boton('boton-nueva-venta', '+ Nueva', 'Empezar una venta nueva');
+	nueva.addEventListener('click', () => acciones.alNueva());
+	const centro = document.createElement('div');
+	centro.className = 'carrusel-centro';
 	const estado = document.createElement('p');
 	estado.className = 'carrusel-estado';
+	estado.setAttribute('aria-live', 'polite');
+	// Los puntos solo indican cuántas hojas hay; para moverse están las flechas y el dedo.
 	const puntos = document.createElement('div');
 	puntos.className = 'carrusel-puntos';
-	const botonesPunto = ventas.map((venta, i) => {
-		const punto = boton('carrusel-punto', '', `Ir a la venta ${i + 1}${venta.cliente ? ` (${venta.cliente})` : ''}`);
-		punto.addEventListener('click', () => irA(i));
-		return punto;
-	});
-	if (ventas.length > 1) puntos.append(...botonesPunto);
+	puntos.setAttribute('aria-hidden', 'true');
+	const marcasPunto = ventas.map(() => document.createElement('span'));
+	if (ventas.length > 1) puntos.append(...marcasPunto);
+	centro.append(estado, puntos);
 
 	let indice = -1;
 	const marcar = (nuevo: number) => {
@@ -117,7 +129,7 @@ export function dibujarVentasAbiertas(
 		const venta = ventas[indice]!;
 		hojaAnterior = venta.id;
 		hojas.forEach((h, i) => h.classList.toggle('activa', i === indice));
-		botonesPunto.forEach((p, i) => p.setAttribute('aria-current', String(i === indice)));
+		marcasPunto.forEach((p, i) => p.classList.toggle('actual', i === indice));
 		estado.textContent = `Venta ${indice + 1} de ${ventas.length}`;
 		anterior.disabled = indice === 0;
 		siguiente.disabled = indice === ventas.length - 1;
@@ -162,8 +174,8 @@ export function dibujarVentasAbiertas(
 
 	const cabecera = document.createElement('div');
 	cabecera.className = 'carrusel-cabecera';
-	cabecera.append(anterior, estado, siguiente);
-	contenedor.replaceChildren(cabecera, ventana, puntos);
+	cabecera.append(anterior, centro, siguiente, nueva);
+	contenedor.replaceChildren(cabecera, ventana);
 
 	// Arranca donde estaba el usuario; si la activa cambió (venta nueva), se desliza hasta ella.
 	const buscar = (id: string | null) => ventas.findIndex((v) => v.id === id);
@@ -189,7 +201,7 @@ function tarjetaVentaAbierta(venta: Venta, acciones: AccionesVentasAbiertas): HT
 	const cliente = document.createElement('label');
 	cliente.className = 'cliente-campo';
 	const textoCliente = document.createElement('span');
-	textoCliente.textContent = 'Cliente (opcional)';
+	textoCliente.textContent = `Cliente (opcional) · desde las ${hora(venta.creada)}`;
 	const inputCliente = document.createElement('input');
 	inputCliente.type = 'text';
 	inputCliente.autocomplete = 'off';
@@ -199,15 +211,12 @@ function tarjetaVentaAbierta(venta: Venta, acciones: AccionesVentasAbiertas): HT
 	inputCliente.addEventListener('change', () => acciones.alCambiarCliente(venta, inputCliente.value.trim()));
 	cliente.append(textoCliente, inputCliente);
 
-	const horaInicio = document.createElement('p');
-	horaInicio.className = 'venta-hora';
-	horaInicio.textContent = `Iniciada a las ${hora(venta.creada)}`;
 	const productos = document.createElement('ul');
 	productos.className = 'productos-abiertos';
 	if (!venta.productos.length) {
 		const vacio = document.createElement('li');
 		vacio.className = 'producto-pendiente';
-		vacio.textContent = 'Todavía no agregaste productos. Usá los botones de carga para sumarlos a esta venta.';
+		vacio.textContent = 'Sin productos todavía. Agregalos con los botones de abajo.';
 		productos.append(vacio);
 	} else {
 		productos.append(
@@ -236,7 +245,7 @@ function tarjetaVentaAbierta(venta: Venta, acciones: AccionesVentasAbiertas): HT
 	const finalizar = document.createElement('button');
 	finalizar.type = 'button';
 	finalizar.className = 'boton-finalizar';
-	finalizar.textContent = 'Finalizar venta';
+	finalizar.textContent = 'Cobrar y finalizar';
 	finalizar.disabled = venta.productos.length === 0;
 	finalizar.addEventListener('click', () => acciones.alFinalizar(venta));
 	const cancelar = document.createElement('button');
@@ -245,7 +254,7 @@ function tarjetaVentaAbierta(venta: Venta, acciones: AccionesVentasAbiertas): HT
 	cancelar.textContent = 'Cancelar';
 	cancelar.addEventListener('click', () => acciones.alCancelar(venta));
 	accionesVenta.append(finalizar, cancelar);
-	tarjeta.append(cliente, horaInicio, productos, pie, accionesVenta);
+	tarjeta.append(cliente, productos, pie, accionesVenta);
 	return tarjeta;
 }
 
