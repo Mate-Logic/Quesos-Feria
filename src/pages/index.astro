@@ -726,12 +726,11 @@ import { ruta } from '../lib/rutas';
 		background: #fff;
 	}
 
-	/* Si la venta tiene muchos productos, se desplaza solo esta lista. */
+	/* Nunca se desplaza: lo que no entra se resume en "+ N productos más" (lista.ts). */
 	.carrusel :global(.productos-abiertos) {
 		flex: 1;
 		min-height: 0;
-		overflow-y: auto;
-		overscroll-behavior: contain;
+		overflow: hidden;
 		list-style: none;
 		border-top: 1px solid #ececf1;
 	}
@@ -759,6 +758,14 @@ import { ruta } from '../lib/rutas';
 		color: var(--texto-suave);
 		text-align: center;
 		line-height: 1.4;
+	}
+
+	.carrusel :global(.productos-abiertos li.productos-mas) {
+		justify-content: center;
+		border: 0;
+		color: var(--texto-suave);
+		font-size: 0.95rem;
+		font-weight: 600;
 	}
 
 	.carrusel :global(.venta-abierta-pie) {

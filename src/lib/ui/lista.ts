@@ -219,17 +219,18 @@ function tarjetaVentaAbierta(venta: Venta, acciones: AccionesVentasAbiertas): HT
 		vacio.textContent = 'Sin productos todavía. Agregalos con los botones de abajo.';
 		productos.append(vacio);
 	} else {
-		productos.append(
-			...venta.productos.map((item) => {
-				const li = document.createElement('li');
-				const detalle = document.createElement('span');
-				detalle.textContent = `${item.producto}${item.pesoKg != null ? ` · ${kilos(item.pesoKg)}` : ''}`;
-				const total = document.createElement('strong');
-				total.textContent = pesos(item.total);
-				li.append(detalle, total);
-				return li;
-			}),
-		);
+		// El último producto cargado va arriba: es el que hay que ver al agregarlo.
+		const filas = [...venta.productos].reverse().map((item) => {
+			const li = document.createElement('li');
+			const detalle = document.createElement('span');
+			detalle.textContent = `${item.producto}${item.pesoKg != null ? ` · ${kilos(item.pesoKg)}` : ''}`;
+			const total = document.createElement('strong');
+			total.textContent = pesos(item.total);
+			li.append(detalle, total);
+			return li;
+		});
+		productos.append(...filas);
+		new ResizeObserver(() => recortarProductos(productos, filas)).observe(productos);
 	}
 
 	const pie = document.createElement('div');
@@ -257,6 +258,23 @@ function tarjetaVentaAbierta(venta: Venta, acciones: AccionesVentasAbiertas): HT
 	accionesVenta.append(finalizar, cancelar);
 	tarjeta.append(cliente, productos, pie, accionesVenta);
 	return tarjeta;
+}
+
+/**
+ * En la hoja no se desplaza nada: si los productos no entran, se muestran los
+ * que caben y el resto se resume en una fila "+ N productos más".
+ */
+function recortarProductos(lista: HTMLElement, filas: HTMLElement[]): void {
+	lista.replaceChildren(...filas);
+	if (!lista.clientHeight || lista.scrollHeight <= lista.clientHeight) return;
+	const mas = document.createElement('li');
+	mas.className = 'productos-mas';
+	for (let visibles = filas.length - 1; visibles >= 0; visibles--) {
+		const resto = filas.length - visibles;
+		mas.textContent = `+ ${resto} ${resto === 1 ? 'producto' : 'productos'} más`;
+		lista.replaceChildren(...filas.slice(0, visibles), mas);
+		if (lista.scrollHeight <= lista.clientHeight) return;
+	}
 }
 
 export function dibujarLista(
