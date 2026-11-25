@@ -89,6 +89,12 @@ El proyecto usa [Bun](https://bun.sh) y el único lockfile es `bun.lock`. No se 
 - No se agregan `package-lock.json`, `yarn.lock` ni `pnpm-lock.yaml`. Si aparece alguno, se borra.
 - Bun bloquea los scripts `postinstall` de las dependencias. Solo se habilitan con `bun pm trust <paquete>` si hacen falta y después de revisar qué hacen.
 
+### 5. Operaciones de GitHub: usar GitHub CLI
+
+- Usar GitHub CLI (`gh`) para las operaciones remotas que soporte: consultar repositorios, issues, pull requests, acciones, releases y autenticación. No reemplazar con llamadas HTTP o navegación manual una operación disponible en `gh`.
+- Antes de actuar sobre GitHub, verificar la autenticación con `gh auth status` y confirmar el repositorio y la rama destino.
+- Para publicar commits locales en una rama, `gh` no ofrece un comando genérico de `push`: después de verificar el remoto, usar `git push origin <rama>`. No usar `gh repo sync` para publicar cambios locales; ese comando sincroniza forks.
+
 ## Development
 
 When starting the dev server, use background mode:
