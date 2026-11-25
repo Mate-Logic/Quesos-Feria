@@ -2,6 +2,7 @@
 
 import { hora, inicioDelDia, kilos, nombreDelDia, pesos } from '../formato';
 import { MARCAS, marcaPorId } from '../marcas';
+import { estadoCobro, resumenPagos, totalesPorMetodo } from '../pagos';
 import { ruta } from '../rutas';
 import type { ProductoVenta, Venta } from '../ventas/db';
 
@@ -53,6 +54,19 @@ export function dibujarResumen(ventas: Venta[]): void {
 				li.append(logo, nombre, valor);
 				return li;
 			}),
+	);
+
+	const porPago = document.getElementById('resumen-pagos')!;
+	porPago.replaceChildren(
+		...totalesPorMetodo(deHoy.flatMap((v) => v.pagos ?? [])).map(({ nombre, total: suma }) => {
+			const li = document.createElement('li');
+			const texto = document.createElement('span');
+			texto.textContent = nombre;
+			const valor = document.createElement('strong');
+			valor.textContent = pesos(suma);
+			li.append(texto, valor);
+			return li;
+		}),
 	);
 }
 
@@ -236,7 +250,11 @@ function tarjetaVentaAbierta(venta: Venta, acciones: AccionesVentasAbiertas): HT
 	const pie = document.createElement('div');
 	pie.className = 'venta-abierta-pie';
 	const cantidad = document.createElement('span');
-	cantidad.textContent = `${venta.productos.length} ${venta.productos.length === 1 ? 'producto' : 'productos'}`;
+	const cobro = estadoCobro(totalVenta(venta), venta.pagos ?? []);
+	// Si quedó un cobro a medias, se ve cuánto falta.
+	cantidad.textContent = venta.pagos?.length && cobro.falta > 0
+		? `Falta cobrar ${pesos(cobro.falta)}`
+		: `${venta.productos.length} ${venta.productos.length === 1 ? 'producto' : 'productos'}`;
 	const total = document.createElement('strong');
 	total.textContent = pesos(totalVenta(venta));
 	pie.append(cantidad, total);
@@ -328,6 +346,9 @@ function itemVenta(venta: Venta, acciones: AccionesLista): HTMLLIElement {
 	const total = document.createElement('strong');
 	total.textContent = pesos(totalVenta(venta));
 	cabecera.append(nombre, total);
+	const pago = document.createElement('p');
+	pago.className = 'venta-historial-pago';
+	pago.textContent = resumenPagos(venta.pagos);
 
 	const productos = document.createElement('ul');
 	productos.className = 'historial-productos';
@@ -368,7 +389,7 @@ function itemVenta(venta: Venta, acciones: AccionesLista): HTMLLIElement {
 	borrar.className = 'borrar-venta';
 	borrar.textContent = 'Borrar venta';
 	borrar.addEventListener('click', () => acciones.alBorrar(venta));
-	li.append(cabecera, productos, borrar);
+	li.append(cabecera, ...(pago.textContent ? [pago] : []), productos, borrar);
 	return li;
 }
 

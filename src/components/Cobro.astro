@@ -1,0 +1,306 @@
+---
+// Hoja para cobrar una venta con uno o varios medios de pago.
+// Se controla desde src/lib/ui/cobro.ts. Entra entera en la pantalla: no se desplaza.
+import { METODOS } from '../lib/pagos';
+---
+
+<dialog id="cobro" class="cobro" aria-labelledby="cobro-titulo">
+	<form id="cobro-form" method="dialog" novalidate>
+		<header class="cobro-cabecera">
+			<div>
+				<h2 id="cobro-titulo">Cobrar</h2>
+				<p id="cobro-venta" class="cobro-venta"></p>
+			</div>
+			<p class="cobro-total"><small>Total</small> <strong id="cobro-total"></strong></p>
+		</header>
+
+		<p id="cobro-estado" class="cobro-estado" aria-live="polite"></p>
+
+		<fieldset class="metodos">
+			<legend>Tocá cómo paga (si paga con varios, tocá cada uno)</legend>
+			{
+				METODOS.map((m) => (
+					<button type="button" class="metodo" data-metodo={m.id}>
+						{m.nombre}
+					</button>
+				))
+			}
+		</fieldset>
+
+		<ul id="cobro-pagos" class="pagos" aria-label="Pagos cargados"></ul>
+
+		<footer class="cobro-acciones">
+			<button id="cobro-volver" class="boton secundario" type="button">Volver</button>
+			<button id="cobro-confirmar" class="boton primario" type="submit">Confirmar cobro</button>
+		</footer>
+	</form>
+</dialog>
+
+<style>
+	.cobro {
+		width: 100%;
+		max-width: 520px;
+		height: 100dvh;
+		max-height: 100dvh;
+		margin: auto auto 0;
+		padding: 0;
+		border: 0;
+		background: var(--superficie);
+		color: var(--texto);
+		overflow: hidden;
+	}
+
+	.cobro[open] {
+		display: flex;
+		flex-direction: column;
+		animation: subir 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+	}
+
+	.cobro::backdrop {
+		background: rgb(15 15 25 / 0.55);
+	}
+
+	@media (min-width: 600px) {
+		.cobro {
+			height: min(760px, 100dvh);
+			margin: auto;
+			border-radius: 24px;
+		}
+	}
+
+	form {
+		flex: 1;
+		min-height: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 0.7rem;
+		padding: max(0.9rem, env(safe-area-inset-top)) 1rem max(0.9rem, env(safe-area-inset-bottom));
+	}
+
+	form > * {
+		flex: none;
+	}
+
+	.cobro-cabecera {
+		display: flex;
+		align-items: flex-end;
+		justify-content: space-between;
+		gap: 0.75rem;
+	}
+
+	h2 {
+		font-size: 1.35rem;
+	}
+
+	.cobro-venta {
+		font-size: 0.9rem;
+		color: var(--texto-suave);
+	}
+
+	.cobro-total {
+		display: grid;
+		justify-items: end;
+		line-height: 1.1;
+	}
+
+	.cobro-total small {
+		font-size: 0.85rem;
+		color: var(--texto-suave);
+	}
+
+	.cobro-total strong {
+		font-size: 1.7rem;
+	}
+
+	.cobro-estado {
+		padding: 0.6rem 0.8rem;
+		border-radius: 12px;
+		font-size: 1.15rem;
+		font-weight: 700;
+		text-align: center;
+		background: #fdeef5;
+		color: #b3125a;
+	}
+
+	.cobro-estado[data-tipo='ok'] {
+		background: #e3f7f9;
+		color: #00606c;
+	}
+
+	.metodos {
+		display: grid;
+		grid-template-columns: repeat(3, 1fr);
+		gap: 0.45rem;
+		border: 0;
+		min-width: 0;
+	}
+
+	.metodos legend {
+		margin-bottom: 0.4rem;
+		font-size: 0.85rem;
+		font-weight: 600;
+		color: var(--texto-suave);
+	}
+
+	.metodo {
+		min-height: 54px;
+		padding: 0.3rem;
+		border: 1.5px solid #d9d9e0;
+		border-radius: 14px;
+		background: #fff;
+		color: var(--texto);
+		font: inherit;
+		font-size: 0.95rem;
+		font-weight: 700;
+		line-height: 1.15;
+		cursor: pointer;
+	}
+
+	.metodo:active {
+		background: #fdeef5;
+		border-color: var(--rosa);
+	}
+
+	/* La lista toma el espacio que queda; si no entra un pago más, no se agrega (cobro.ts). */
+	.pagos {
+		flex: 1;
+		min-height: 0;
+		overflow: hidden;
+		list-style: none;
+		display: flex;
+		flex-direction: column;
+		gap: 0.45rem;
+	}
+
+	.pagos :global(.pago) {
+		display: grid;
+		grid-template-columns: 1fr minmax(0, 9.5rem) 48px;
+		align-items: center;
+		gap: 0.5rem;
+	}
+
+	.pagos :global(.pago-nombre) {
+		font-weight: 700;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.pagos :global(.pago-monto) {
+		position: relative;
+		display: flex;
+		align-items: center;
+	}
+
+	.pagos :global(.pago-monto span) {
+		position: absolute;
+		left: 0.7rem;
+		color: var(--texto-suave);
+		pointer-events: none;
+	}
+
+	.pagos :global(.pago-monto input) {
+		width: 100%;
+		min-height: 48px;
+		padding: 0.5rem 0.6rem 0.5rem 1.6rem;
+		border: 1.5px solid #d9d9e0;
+		border-radius: 12px;
+		font: inherit;
+		font-size: 1.1rem;
+		font-weight: 700;
+		text-align: right;
+		background: #fff;
+		color: inherit;
+	}
+
+	.pagos :global(.pago-monto input:focus) {
+		outline: none;
+		border-color: var(--celeste);
+		box-shadow: 0 0 0 3px rgb(0 174 195 / 0.2);
+	}
+
+	.pagos :global(.pago-quitar) {
+		width: 48px;
+		height: 48px;
+		border: 0;
+		border-radius: 50%;
+		background: #f2f1f5;
+		color: var(--texto-suave);
+		font: inherit;
+		font-size: 1.3rem;
+		cursor: pointer;
+	}
+
+	.pagos :global(.pagos-vacio),
+	.pagos :global(.pagos-lleno) {
+		padding: 0.5rem;
+		color: var(--texto-suave);
+		text-align: center;
+		line-height: 1.4;
+	}
+
+	.pagos :global(.pagos-lleno) {
+		color: #b3125a;
+		font-weight: 600;
+	}
+
+	.cobro-acciones {
+		display: grid;
+		grid-template-columns: 1fr 2fr;
+		gap: 0.6rem;
+	}
+
+	.boton {
+		min-height: 56px;
+		padding: 0.5rem 1rem;
+		border: 0;
+		border-radius: 999px;
+		font: inherit;
+		font-size: 1.1rem;
+		font-weight: 700;
+		cursor: pointer;
+	}
+
+	.primario {
+		background: var(--degrade);
+		color: #fff;
+	}
+
+	.primario:disabled {
+		opacity: 0.4;
+		cursor: default;
+	}
+
+	.secundario {
+		background: #efeef3;
+		color: var(--texto);
+	}
+
+	@media (max-height: 620px) {
+		form {
+			gap: 0.5rem;
+		}
+
+		.metodo {
+			min-height: 46px;
+		}
+
+		.cobro-estado {
+			padding: 0.4rem;
+			font-size: 1rem;
+		}
+	}
+
+	@keyframes subir {
+		from {
+			transform: translateY(40px);
+			opacity: 0;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.cobro[open] {
+			animation: none;
+		}
+	}
+</style>

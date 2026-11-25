@@ -1,6 +1,8 @@
 // Ventas guardadas en el celular con IndexedDB (regla 3: datos locales).
 // Las ventas abiertas se conservan hasta que se finalizan o cancelan.
 
+import type { Pago } from '../pagos';
+
 export interface ProductoVenta {
 	id: string;
 	marca: string;
@@ -22,6 +24,11 @@ export interface Venta {
 	cliente: string;
 	estado: 'abierta' | 'finalizada' | 'cancelada';
 	productos: ProductoVenta[];
+	/**
+	 * Cómo se pagó. En una venta abierta son los pagos ya cargados de un cobro
+	 * que quedó pendiente; las ventas viejas pueden no tenerlo.
+	 */
+	pagos?: Pago[];
 }
 
 /** Lo último que se sabe de cada producto, para reconocerlo y completar el próximo ticket. */

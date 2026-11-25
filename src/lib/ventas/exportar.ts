@@ -2,6 +2,7 @@
 // Funciona sin conexión: el archivo se arma en el celular y se descarga o se comparte.
 
 import { marcaPorId } from '../marcas';
+import { nombreMetodo } from '../pagos';
 import type { Venta } from './db';
 
 const FECHA = new Intl.DateTimeFormat('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -11,7 +12,7 @@ const DECIMAL = new Intl.NumberFormat('es-AR', { useGrouping: false, maximumFrac
 export function ventasACsv(ventas: Venta[]): string {
 	const finalizadas = ventas.filter((venta) => venta.estado === 'finalizada');
 	const filas = [
-		['Venta', 'Fecha', 'Hora', 'Cliente', 'Marca', 'Producto', 'Peso (kg)', 'Precio por kg', 'Total', 'Origen'],
+		['Venta', 'Fecha', 'Hora', 'Cliente', 'Marca', 'Producto', 'Peso (kg)', 'Precio por kg', 'Total', 'Origen', 'Pago de la venta'],
 		...[...finalizadas]
 			.sort((a, b) => a.creada - b.creada)
 			.flatMap((venta) =>
@@ -26,6 +27,7 @@ export function ventasACsv(ventas: Venta[]): string {
 					producto.precioKg == null ? '' : DECIMAL.format(producto.precioKg),
 					DECIMAL.format(producto.total),
 					producto.origen === 'ticket' ? 'Ticket' : 'A mano',
+					(venta.pagos ?? []).map((p) => `${nombreMetodo(p.metodo)} ${DECIMAL.format(p.monto)}`).join(' + '),
 				]),
 			),
 	];

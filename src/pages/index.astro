@@ -3,6 +3,7 @@ import Layout from '../layouts/Layout.astro';
 import Splash from '../components/Splash.astro';
 import Camara from '../components/Camara.astro';
 import Revision from '../components/Revision.astro';
+import Cobro from '../components/Cobro.astro';
 import { ruta } from '../lib/rutas';
 ---
 
@@ -62,6 +63,7 @@ import { ruta } from '../lib/rutas';
 			<p id="resumen-total" class="resumen-total">$ 0,00</p>
 			<p id="resumen-detalle" class="resumen-detalle">Todavía no hay ventas hoy</p>
 			<ul id="resumen-marcas" class="resumen-marcas" aria-label="Total por marca"></ul>
+			<ul id="resumen-pagos" class="resumen-marcas resumen-pagos" aria-label="Total por medio de pago"></ul>
 		</section>
 
 		<section class="ventas" aria-labelledby="ventas-titulo">
@@ -105,11 +107,14 @@ import { ruta } from '../lib/rutas';
 
 	<Camara />
 	<Revision />
+	<Cobro />
 </Layout>
 
 <script>
 	import { abrirCamara, esCelular, hayCamara } from '../lib/ui/camara';
 	import { abrirRevision } from '../lib/ui/revision';
+	import { abrirCobro } from '../lib/ui/cobro';
+	import { estadoCobro } from '../lib/pagos';
 	import {
 		avisar,
 		centrarVentaActiva,
@@ -332,19 +337,31 @@ import { ruta } from '../lib/rutas';
 	}
 
 	async function finalizar(venta: Venta) {
-		const actualizada = await actualizarVenta(venta.id, (actual) =>
-			actual.estado === 'abierta' && actual.productos.length
-				? { ...actual, estado: 'finalizada', finalizada: Date.now() }
-				: null,
-		);
+		const numero = abiertasActuales().findIndex((v) => v.id === venta.id) + 1;
+		const cobro = await abrirCobro(venta, numero);
+		if (cobro.accion === 'volver') {
+			// La venta queda pendiente; se guardan los pagos cargados para retomarlos.
+			if (JSON.stringify(cobro.pagos) === JSON.stringify(venta.pagos ?? [])) return;
+			await actualizarVenta(venta.id, (actual) => (actual.estado === 'abierta' ? { ...actual, pagos: cobro.pagos } : null));
+			await refrescar();
+			avisar('La venta quedó pendiente de cobro');
+			return;
+		}
+		const actualizada = await actualizarVenta(venta.id, (actual) => {
+			const total = actual.productos.reduce((s, p) => s + p.total, 0);
+			const cubre = estadoCobro(total, cobro.pagos).completo;
+			return actual.estado === 'abierta' && actual.productos.length && cubre
+				? { ...actual, pagos: cobro.pagos, estado: 'finalizada', finalizada: Date.now() }
+				: null;
+		});
 		if (actualizada?.estado !== 'finalizada') {
-			avisar('No se pudo finalizar: agregá al menos un producto y volvé a intentar.');
+			avisar('No se pudo cobrar: la venta cambió. Revisala y volvé a intentar.');
 			await refrescar();
 			return;
 		}
 		void pedirAlmacenamientoPersistente();
 		await refrescar();
-		avisar('Venta finalizada', { texto: 'Ver ventas del día', alTocar: () => mostrarPestana('dia') });
+		avisar('Venta cobrada', { texto: 'Ver ventas del día', alTocar: () => mostrarPestana('dia') });
 	}
 
 	async function cancelar(venta: Venta) {
@@ -567,6 +584,17 @@ import { ruta } from '../lib/rutas';
 
 	.resumen-marcas :global(strong) {
 		margin-left: auto;
+	}
+
+	.resumen-pagos {
+		padding-top: 0.6rem;
+		border-top: 1px solid #ececf1;
+	}
+
+	.lista :global(.venta-historial-pago) {
+		font-size: 0.82rem;
+		color: #00838f;
+		font-weight: 600;
 	}
 
 	/* --- Ventas abiertas: hojas que ocupan todo el espacio libre --- */
