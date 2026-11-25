@@ -56,10 +56,8 @@ export function abrirCamara(): Promise<FotoElegida | null> {
 
 		const alDisparar = () => {
 			if (!video.videoWidth) return;
-			raiz.classList.add('capturando');
-			const foto = recortarRecuadro(video, recuadro);
-			// Un instante para que se vea el destello antes de cerrar.
-			setTimeout(() => terminar({ tipo: 'camara', foto }), 180);
+			// Sin esperas: la foto pasa directo a la lectura.
+			terminar({ tipo: 'camara', foto: recortarRecuadro(video, recuadro) });
 		};
 		const alCerrar = () => terminar(null);
 		const alElegir = () => {

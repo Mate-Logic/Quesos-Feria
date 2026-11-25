@@ -488,6 +488,12 @@ import { ruta } from '../lib/rutas';
 		console.error(error);
 		avisar('No se pudieron cargar las ventas guardadas.');
 	});
+
+	// El lector de tickets tarda unos segundos en cargar su motor y el modelo de
+	// español: se prepara apenas el celular queda libre, así el primer escaneo
+	// no espera. Si falla (por ejemplo, sin el modelo en caché), se reintenta al escanear.
+	const cuandoEsteLibre = window.requestIdleCallback ?? ((fn: () => void) => setTimeout(fn, 1500));
+	cuandoEsteLibre(() => void prepararLector().catch(() => {}));
 </script>
 
 <style>
