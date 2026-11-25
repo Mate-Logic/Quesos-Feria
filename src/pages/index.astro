@@ -862,9 +862,19 @@ import { ruta } from '../lib/rutas';
 		color: var(--texto-suave);
 	}
 
+	.carrusel :global(.venta-abierta-pie span) {
+		white-space: nowrap;
+	}
+
+	/* Se achica solo con totales muy grandes, para que entre en un renglón. */
 	.carrusel :global(.venta-abierta-pie strong) {
 		color: var(--texto);
-		font-size: 2rem;
+		font-size: clamp(1.5rem, 8vw, 2rem);
+		white-space: nowrap;
+	}
+
+	.carrusel :global(.venta-abierta-pie) {
+		gap: 0.6rem;
 	}
 
 	.carrusel :global(.venta-abierta-acciones) {
