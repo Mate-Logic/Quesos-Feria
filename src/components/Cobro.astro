@@ -220,11 +220,12 @@ import { METODOS } from '../lib/pagos';
 		border-color: var(--rosa);
 	}
 
-	/* La lista toma el espacio que queda; si no entra un pago más, no se agrega (cobro.ts). */
+	/* La lista toma el espacio que queda; con muchos pagos se desplaza solo ella. */
 	.pagos {
 		flex: 1;
 		min-height: 0;
-		overflow: hidden;
+		overflow-y: auto;
+		overscroll-behavior: contain;
 		list-style: none;
 		display: flex;
 		flex-direction: column;
@@ -290,17 +291,11 @@ import { METODOS } from '../lib/pagos';
 		cursor: pointer;
 	}
 
-	.pagos :global(.pagos-vacio),
-	.pagos :global(.pagos-lleno) {
+	.pagos :global(.pagos-vacio) {
 		padding: 0.5rem;
 		color: var(--texto-suave);
 		text-align: center;
 		line-height: 1.4;
-	}
-
-	.pagos :global(.pagos-lleno) {
-		color: #b3125a;
-		font-weight: 600;
 	}
 
 	.cobro-acciones {

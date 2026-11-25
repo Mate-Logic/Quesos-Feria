@@ -38,7 +38,6 @@ export function abrirCobro(venta: Venta, opciones: OpcionesCobro): Promise<Resul
 	const saldando = opciones.deuda != null;
 	const total = opciones.deuda ?? venta.productos.reduce((s, p) => s + p.total, 0);
 	const pagos: Pago[] = saldando ? [] : (venta.pagos ?? []).map((p) => ({ ...p }));
-	let lleno = false;
 
 	titulo.textContent = saldando ? 'Cobrar deuda' : 'Cobrar';
 	detalle.textContent = opciones.detalle;
@@ -106,7 +105,6 @@ export function abrirCobro(venta: Venta, opciones: OpcionesCobro): Promise<Resul
 		quitar.setAttribute('aria-label', `Quitar ${nombreMetodo(pago.metodo)}`);
 		quitar.addEventListener('click', () => {
 			pagos.splice(pagos.indexOf(pago), 1);
-			lleno = false;
 			mostrarNota(campoNota.hidden !== true && (hayDeuda() || nota.value.trim() !== ''));
 			dibujar();
 		});
@@ -123,12 +121,6 @@ export function abrirCobro(venta: Venta, opciones: OpcionesCobro): Promise<Resul
 		} else {
 			lista.replaceChildren(...pagos.map(fila));
 		}
-		if (lleno) {
-			const aviso = document.createElement('li');
-			aviso.className = 'pagos-lleno';
-			aviso.textContent = 'No entran más pagos. Juntá montos o quitá alguno.';
-			lista.append(aviso);
-		}
 		actualizarEstado();
 	}
 
@@ -136,13 +128,8 @@ export function abrirCobro(venta: Venta, opciones: OpcionesCobro): Promise<Resul
 		pagos.push({ id: nuevoId(), metodo, monto: estadoCobro(total, pagos).falta });
 		if (metodo === 'debe') mostrarNota(true);
 		dibujar();
-		// Sin desplazamiento: si el pago nuevo no entra en la pantalla, no se agrega.
-		if (lista.scrollHeight > lista.clientHeight) {
-			pagos.pop();
-			lleno = true;
-			if (!hayDeuda()) mostrarNota(nota.value.trim() !== '');
-			dibujar();
-		}
+		// Con muchos pagos la lista se desplaza: se muestra el que se acaba de agregar.
+		lista.lastElementChild?.scrollIntoView({ block: 'nearest' });
 		if (metodo === 'debe' && !nota.value.trim()) nota.focus();
 	}
 

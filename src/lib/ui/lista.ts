@@ -239,7 +239,6 @@ function tarjetaVentaAbierta(venta: Venta, acciones: AccionesVentasAbiertas): HT
 			return li;
 		});
 		productos.append(...filas);
-		new ResizeObserver(() => recortarProductos(productos, filas)).observe(productos);
 	}
 
 	const pie = document.createElement('div');
@@ -271,23 +270,6 @@ function tarjetaVentaAbierta(venta: Venta, acciones: AccionesVentasAbiertas): HT
 	accionesVenta.append(finalizar, cancelar);
 	tarjeta.append(cliente, productos, pie, accionesVenta);
 	return tarjeta;
-}
-
-/**
- * En la hoja no se desplaza nada: si los productos no entran, se muestran los
- * que caben y el resto se resume en una fila "+ N productos más".
- */
-function recortarProductos(lista: HTMLElement, filas: HTMLElement[]): void {
-	lista.replaceChildren(...filas);
-	if (!lista.clientHeight || lista.scrollHeight <= lista.clientHeight) return;
-	const mas = document.createElement('li');
-	mas.className = 'productos-mas';
-	for (let visibles = filas.length - 1; visibles >= 0; visibles--) {
-		const resto = filas.length - visibles;
-		mas.textContent = `+ ${resto} ${resto === 1 ? 'producto' : 'productos'} más`;
-		lista.replaceChildren(...filas.slice(0, visibles), mas);
-		if (lista.scrollHeight <= lista.clientHeight) return;
-	}
 }
 
 export function dibujarLista(
