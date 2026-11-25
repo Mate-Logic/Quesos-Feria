@@ -623,10 +623,21 @@ import { ruta } from '../lib/rutas';
 		border-top: 1px solid #ececf1;
 	}
 
-	.lista :global(.venta-historial-pago) {
-		font-size: 0.82rem;
-		color: #00838f;
-		font-weight: 600;
+	.lista :global(.venta-historial-pagos) {
+		list-style: none;
+		margin-top: 0.35rem;
+		padding: 0.35rem 0.6rem;
+		border-radius: 10px;
+		background: #eef9fa;
+		color: #00606c;
+		font-size: 0.88rem;
+	}
+
+	.lista :global(.venta-historial-pagos li) {
+		display: flex;
+		justify-content: space-between;
+		gap: 0.75rem;
+		padding: 0.15rem 0;
 	}
 
 	.lista :global(.venta-historial-nota) {

@@ -2,7 +2,7 @@
 
 import { hora, inicioDelDia, kilos, nombreDelDia, pesos } from '../formato';
 import { MARCAS, marcaPorId } from '../marcas';
-import { deuda, estadoCobro, resumenPagos, totalesPorMetodo } from '../pagos';
+import { deuda, estadoCobro, nombreMetodo, totalesPorMetodo } from '../pagos';
 import { ruta } from '../rutas';
 import type { ProductoVenta, Venta } from '../ventas/db';
 
@@ -341,11 +341,24 @@ function itemVenta(venta: Venta, acciones: AccionesLista): HTMLLIElement {
 	const total = document.createElement('strong');
 	total.textContent = pesos(totalVenta(venta));
 	cabecera.append(nombre, total);
-	const pago = document.createElement('p');
-	pago.className = 'venta-historial-pago';
-	pago.textContent = resumenPagos(venta.pagos);
+	// Cada pago con su monto, aunque se repita el medio (por ejemplo, varias Cuenta DNI).
+	const pagados = (venta.pagos ?? []).filter((p) => p.metodo !== 'debe');
+	const pago = document.createElement('ul');
+	pago.className = 'venta-historial-pagos';
+	pago.setAttribute('aria-label', 'Pagos');
+	pago.append(
+		...pagados.map((p) => {
+			const fila = document.createElement('li');
+			const medio = document.createElement('span');
+			medio.textContent = nombreMetodo(p.metodo);
+			const monto = document.createElement('strong');
+			monto.textContent = pesos(p.monto);
+			fila.append(medio, monto);
+			return fila;
+		}),
+	);
 
-	const extras: HTMLElement[] = pago.textContent ? [pago] : [];
+	const extras: HTMLElement[] = pagados.length ? [pago] : [];
 	const debe = deuda(venta.pagos);
 	if (debe > 0) {
 		const aviso = document.createElement('div');
