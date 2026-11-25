@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { estadoCobro, pagosFinales, resumenPagos, totalesPorMetodo, type Pago } from '../src/lib/pagos';
+import { deuda, estadoCobro, pagosFinales, resumenPagos, totalesPorMetodo, type Pago } from '../src/lib/pagos';
 
 const pago = (metodo: Pago['metodo'], monto: number, id = `${metodo}-${monto}`): Pago => ({ id, metodo, monto });
 
@@ -36,6 +36,15 @@ describe('pagosFinales', () => {
 			['cuenta-dni', 5000],
 			['efectivo', 7000],
 		]);
+	});
+});
+
+describe('deuda', () => {
+	test('lo adeudado completa el cobro y se suma aparte', () => {
+		const pagos = [pago('efectivo', 6000), pago('debe', 4000)];
+		expect(estadoCobro(10000, pagos).completo).toBe(true);
+		expect(deuda(pagos)).toBe(4000);
+		expect(totalesPorMetodo(pagos).at(-1)).toEqual({ id: 'debe', nombre: 'Queda debiendo', total: 4000 });
 	});
 });
 

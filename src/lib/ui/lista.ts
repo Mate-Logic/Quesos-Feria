@@ -2,13 +2,14 @@
 
 import { hora, inicioDelDia, kilos, nombreDelDia, pesos } from '../formato';
 import { MARCAS, marcaPorId } from '../marcas';
-import { estadoCobro, resumenPagos, totalesPorMetodo } from '../pagos';
+import { deuda, estadoCobro, resumenPagos, totalesPorMetodo } from '../pagos';
 import { ruta } from '../rutas';
 import type { ProductoVenta, Venta } from '../ventas/db';
 
 export interface AccionesLista {
 	alEditar(venta: Venta, producto: ProductoVenta): void;
 	alBorrar(venta: Venta): void;
+	alSaldar(venta: Venta): void;
 }
 
 export interface AccionesVentasAbiertas {
@@ -119,8 +120,6 @@ export function dibujarVentasAbiertas(
 	});
 	ventana.append(...hojas);
 
-	const anterior = boton('carrusel-control', '‹', 'Ver la venta anterior');
-	const siguiente = boton('carrusel-control', '›', 'Ver la venta siguiente');
 	const nueva = boton('boton-nueva-venta', '+ Nueva', 'Empezar una venta nueva');
 	nueva.addEventListener('click', () => acciones.alNueva());
 	const centro = document.createElement('div');
@@ -144,9 +143,7 @@ export function dibujarVentasAbiertas(
 		hojaAnterior = venta.id;
 		hojas.forEach((h, i) => h.classList.toggle('activa', i === indice));
 		marcasPunto.forEach((p, i) => p.classList.toggle('actual', i === indice));
-		estado.textContent = `Venta ${indice + 1} de ${ventas.length}`;
-		anterior.disabled = indice === 0;
-		siguiente.disabled = indice === ventas.length - 1;
+		estado.textContent = ventas.length > 1 ? `Venta ${indice + 1} de ${ventas.length}` : 'Venta en curso';
 		acciones.alSeleccionar(venta.id);
 	};
 	const posicion = (i: number) => {
@@ -158,8 +155,6 @@ export function dibujarVentasAbiertas(
 		ventana.scrollTo({ left: posicion(destino), behavior: suave && !sinAnimacion ? 'smooth' : 'instant' });
 		marcar(destino);
 	};
-	anterior.addEventListener('click', () => irA(indice - 1));
-	siguiente.addEventListener('click', () => irA(indice + 1));
 
 	// Mientras se desliza, la hoja activa es la que quedó más cerca del centro.
 	let pendiente = 0;
@@ -188,7 +183,7 @@ export function dibujarVentasAbiertas(
 
 	const cabecera = document.createElement('div');
 	cabecera.className = 'carrusel-cabecera';
-	cabecera.append(anterior, centro, siguiente, nueva);
+	cabecera.append(centro, nueva);
 	contenedor.replaceChildren(cabecera, ventana);
 
 	// Arranca donde estaba el usuario; si la activa cambió (venta nueva), se desliza hasta ella.
@@ -350,6 +345,26 @@ function itemVenta(venta: Venta, acciones: AccionesLista): HTMLLIElement {
 	pago.className = 'venta-historial-pago';
 	pago.textContent = resumenPagos(venta.pagos);
 
+	const extras: HTMLElement[] = pago.textContent ? [pago] : [];
+	const debe = deuda(venta.pagos);
+	if (debe > 0) {
+		const aviso = document.createElement('div');
+		aviso.className = 'venta-deuda';
+		const texto = document.createElement('span');
+		texto.textContent = `Debe ${pesos(debe)}${venta.nota ? ` · ${venta.nota}` : ''}`;
+		const cobrar = document.createElement('button');
+		cobrar.type = 'button';
+		cobrar.textContent = 'Cobrar deuda';
+		cobrar.addEventListener('click', () => acciones.alSaldar(venta));
+		aviso.append(texto, cobrar);
+		extras.push(aviso);
+	} else if (venta.nota) {
+		const nota = document.createElement('p');
+		nota.className = 'venta-historial-nota';
+		nota.textContent = `Nota: ${venta.nota}`;
+		extras.push(nota);
+	}
+
 	const productos = document.createElement('ul');
 	productos.className = 'historial-productos';
 	productos.append(
@@ -389,7 +404,7 @@ function itemVenta(venta: Venta, acciones: AccionesLista): HTMLLIElement {
 	borrar.className = 'borrar-venta';
 	borrar.textContent = 'Borrar venta';
 	borrar.addEventListener('click', () => acciones.alBorrar(venta));
-	li.append(cabecera, ...(pago.textContent ? [pago] : []), productos, borrar);
+	li.append(cabecera, ...extras, productos, borrar);
 	return li;
 }
 

@@ -114,7 +114,8 @@ import { ruta } from '../lib/rutas';
 	import { abrirCamara, esCelular, hayCamara } from '../lib/ui/camara';
 	import { abrirRevision } from '../lib/ui/revision';
 	import { abrirCobro } from '../lib/ui/cobro';
-	import { estadoCobro } from '../lib/pagos';
+	import { deuda, estadoCobro } from '../lib/pagos';
+	import { hora } from '../lib/formato';
 	import {
 		avisar,
 		centrarVentaActiva,
@@ -123,7 +124,7 @@ import { ruta } from '../lib/rutas';
 		dibujarResumen,
 		dibujarVentasAbiertas,
 	} from '../lib/ui/lista';
-	import { inicioDelDia } from '../lib/formato';
+	import { inicioDelDia, pesos } from '../lib/formato';
 	import { leerFoto, prepararLector } from '../lib/tickets/lector';
 	import {
 		borrarVenta,
@@ -233,6 +234,7 @@ import { ruta } from '../lib/rutas';
 			alEditar: (venta: Venta, producto: ProductoVenta) =>
 				void ejecutar(() => editar(venta, producto), 'No se pudieron guardar los cambios. Intentá de nuevo.'),
 			alBorrar: (venta: Venta) => void ejecutar(() => borrar(venta), 'No se pudo borrar la venta. Intentá de nuevo.'),
+			alSaldar: (venta: Venta) => void ejecutar(() => saldar(venta), 'No se pudo registrar el pago. Intentá de nuevo.'),
 		};
 		dibujarLista(lista, deHoy, accionesLista, 'Todavía no finalizaste ventas hoy. Las ventas aparecen acá cuando las cobrás.');
 		dibujarLista(listaAnteriores, anteriores, accionesLista);
@@ -338,11 +340,14 @@ import { ruta } from '../lib/rutas';
 
 	async function finalizar(venta: Venta) {
 		const numero = abiertasActuales().findIndex((v) => v.id === venta.id) + 1;
-		const cobro = await abrirCobro(venta, numero);
+		const cobro = await abrirCobro(venta, { detalle: venta.cliente ? `Venta ${numero} · ${venta.cliente}` : `Venta ${numero}` });
 		if (cobro.accion === 'volver') {
-			// La venta queda pendiente; se guardan los pagos cargados para retomarlos.
-			if (JSON.stringify(cobro.pagos) === JSON.stringify(venta.pagos ?? [])) return;
-			await actualizarVenta(venta.id, (actual) => (actual.estado === 'abierta' ? { ...actual, pagos: cobro.pagos } : null));
+			// La venta queda pendiente; se guardan los pagos y la nota para retomarlos.
+			const igual = JSON.stringify(cobro.pagos) === JSON.stringify(venta.pagos ?? []) && cobro.nota === (venta.nota ?? '');
+			if (igual) return;
+			await actualizarVenta(venta.id, (actual) =>
+				actual.estado === 'abierta' ? { ...actual, pagos: cobro.pagos, nota: cobro.nota || undefined } : null,
+			);
 			await refrescar();
 			avisar('La venta quedó pendiente de cobro');
 			return;
@@ -351,7 +356,7 @@ import { ruta } from '../lib/rutas';
 			const total = actual.productos.reduce((s, p) => s + p.total, 0);
 			const cubre = estadoCobro(total, cobro.pagos).completo;
 			return actual.estado === 'abierta' && actual.productos.length && cubre
-				? { ...actual, pagos: cobro.pagos, estado: 'finalizada', finalizada: Date.now() }
+				? { ...actual, pagos: cobro.pagos, nota: cobro.nota || undefined, estado: 'finalizada', finalizada: Date.now() }
 				: null;
 		});
 		if (actualizada?.estado !== 'finalizada') {
@@ -362,6 +367,33 @@ import { ruta } from '../lib/rutas';
 		void pedirAlmacenamientoPersistente();
 		await refrescar();
 		avisar('Venta cobrada', { texto: 'Ver ventas del día', alTocar: () => mostrarPestana('dia') });
+	}
+
+	/** Cobra lo que quedó debiendo una venta ya finalizada. */
+	async function saldar(venta: Venta) {
+		const debe = deuda(venta.pagos);
+		if (!debe) return;
+		const detalle = venta.nota || venta.cliente || `Venta de las ${hora(venta.finalizada ?? venta.creada)}`;
+		const cobro = await abrirCobro(venta, { detalle, deuda: debe });
+		if (cobro.accion === 'volver') {
+			if (cobro.nota === (venta.nota ?? '')) return;
+			await actualizarVenta(venta.id, (actual) => ({ ...actual, nota: cobro.nota || undefined }));
+			await refrescar();
+			return;
+		}
+		const actualizada = await actualizarVenta(venta.id, (actual) =>
+			actual.estado === 'finalizada' && deuda(actual.pagos) === debe
+				? {
+						...actual,
+						pagos: [...(actual.pagos ?? []).filter((p) => p.metodo !== 'debe'), ...cobro.pagos],
+						nota: cobro.nota || undefined,
+					}
+				: null,
+		);
+		await refrescar();
+		const sigue = deuda(actualizada?.pagos);
+		if (sigue === debe) avisar('La venta cambió y no se registró el pago. Revisala.');
+		else avisar(sigue > 0 ? `Pago registrado. Sigue debiendo ${pesos(sigue)}` : 'Deuda saldada');
 	}
 
 	async function cancelar(venta: Venta) {
@@ -597,6 +629,39 @@ import { ruta } from '../lib/rutas';
 		font-weight: 600;
 	}
 
+	.lista :global(.venta-historial-nota) {
+		margin-top: 0.3rem;
+		font-size: 0.85rem;
+		color: var(--texto-suave);
+	}
+
+	.lista :global(.venta-deuda) {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.6rem;
+		margin-top: 0.4rem;
+		padding: 0.5rem 0.6rem;
+		border-radius: 12px;
+		background: #fdeef5;
+		color: #b3125a;
+		font-size: 0.9rem;
+		font-weight: 600;
+	}
+
+	.lista :global(.venta-deuda button) {
+		flex: none;
+		min-height: 44px;
+		padding: 0 0.9rem;
+		border: 0;
+		border-radius: 999px;
+		background: var(--degrade);
+		color: #fff;
+		font: inherit;
+		font-weight: 700;
+		cursor: pointer;
+	}
+
 	/* --- Ventas abiertas: hojas que ocupan todo el espacio libre --- */
 	.ventas-abiertas,
 	.carrusel {
@@ -610,19 +675,19 @@ import { ruta } from '../lib/rutas';
 	.carrusel :global(.carrusel-cabecera) {
 		flex: none;
 		display: grid;
-		grid-template-columns: 48px 1fr 48px auto;
+		grid-template-columns: 1fr auto;
 		align-items: center;
-		gap: 0.4rem;
+		gap: 0.6rem;
 	}
 
 	.carrusel :global(.carrusel-centro) {
 		display: grid;
-		justify-items: center;
+		justify-items: start;
 		gap: 0.3rem;
 	}
 
 	.carrusel :global(.carrusel-estado) {
-		font-size: 1.05rem;
+		font-size: 1.3rem;
 		font-weight: 700;
 	}
 
@@ -648,25 +713,6 @@ import { ruta } from '../lib/rutas';
 		background: var(--rosa);
 	}
 
-	.carrusel :global(.carrusel-control) {
-		width: 48px;
-		height: 48px;
-		border: 0;
-		border-radius: 50%;
-		background: var(--superficie);
-		color: var(--texto);
-		font: inherit;
-		font-size: 2rem;
-		line-height: 1;
-		box-shadow: 0 2px 8px rgb(0 0 0 / 0.1);
-		cursor: pointer;
-	}
-
-	.carrusel :global(.carrusel-control:disabled) {
-		opacity: 0.3;
-		cursor: default;
-	}
-
 	.carrusel :global(.boton-nueva-venta),
 	.carrusel :global(.boton-empezar) {
 		min-height: 48px;
@@ -676,7 +722,7 @@ import { ruta } from '../lib/rutas';
 		background: var(--degrade);
 		color: #fff;
 		font: inherit;
-		font-size: 1rem;
+		font-size: 1.1rem;
 		font-weight: 700;
 		white-space: nowrap;
 		cursor: pointer;
@@ -744,12 +790,12 @@ import { ruta } from '../lib/rutas';
 
 	.carrusel :global(.cliente-campo input) {
 		width: 100%;
-		min-height: 48px;
+		min-height: 50px;
 		padding: 0.6rem 0.8rem;
 		border: 1.5px solid #d9d9e0;
 		border-radius: 12px;
 		font: inherit;
-		font-size: 1.1rem;
+		font-size: 1.2rem;
 		color: var(--texto);
 		background: #fff;
 	}
@@ -768,9 +814,9 @@ import { ruta } from '../lib/rutas';
 		align-items: center;
 		justify-content: space-between;
 		gap: 0.75rem;
-		padding: 0.65rem 0;
+		padding: 0.6rem 0;
 		border-bottom: 1px solid #f0f0f3;
-		font-size: 1.05rem;
+		font-size: 1.2rem;
 	}
 
 	.carrusel :global(.productos-abiertos li > span:first-child) {
@@ -801,13 +847,13 @@ import { ruta } from '../lib/rutas';
 		display: flex;
 		align-items: baseline;
 		justify-content: space-between;
-		font-size: 1rem;
+		font-size: 1.1rem;
 		color: var(--texto-suave);
 	}
 
 	.carrusel :global(.venta-abierta-pie strong) {
 		color: var(--texto);
-		font-size: 1.6rem;
+		font-size: 2rem;
 	}
 
 	.carrusel :global(.venta-abierta-acciones) {
@@ -818,12 +864,12 @@ import { ruta } from '../lib/rutas';
 	}
 
 	.carrusel :global(.venta-abierta-acciones button) {
-		min-height: 54px;
+		min-height: 58px;
 		padding: 0.5rem 0.8rem;
 		border: 0;
 		border-radius: 14px;
 		font: inherit;
-		font-size: 1.1rem;
+		font-size: 1.25rem;
 		font-weight: 700;
 		cursor: pointer;
 	}
@@ -891,7 +937,7 @@ import { ruta } from '../lib/rutas';
 		border: 0;
 		border-radius: var(--radio);
 		font: inherit;
-		font-size: 0.98rem;
+		font-size: 1.1rem;
 		font-weight: 700;
 		text-align: center;
 		line-height: 1.15;

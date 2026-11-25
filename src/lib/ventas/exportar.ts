@@ -12,7 +12,7 @@ const DECIMAL = new Intl.NumberFormat('es-AR', { useGrouping: false, maximumFrac
 export function ventasACsv(ventas: Venta[]): string {
 	const finalizadas = ventas.filter((venta) => venta.estado === 'finalizada');
 	const filas = [
-		['Venta', 'Fecha', 'Hora', 'Cliente', 'Marca', 'Producto', 'Peso (kg)', 'Precio por kg', 'Total', 'Origen', 'Pago de la venta'],
+		['Venta', 'Fecha', 'Hora', 'Cliente', 'Marca', 'Producto', 'Peso (kg)', 'Precio por kg', 'Total', 'Origen', 'Pago de la venta', 'Nota'],
 		...[...finalizadas]
 			.sort((a, b) => a.creada - b.creada)
 			.flatMap((venta) =>
@@ -28,6 +28,7 @@ export function ventasACsv(ventas: Venta[]): string {
 					DECIMAL.format(producto.total),
 					producto.origen === 'ticket' ? 'Ticket' : 'A mano',
 					(venta.pagos ?? []).map((p) => `${nombreMetodo(p.metodo)} ${DECIMAL.format(p.monto)}`).join(' + '),
+					venta.nota ?? '',
 				]),
 			),
 	];

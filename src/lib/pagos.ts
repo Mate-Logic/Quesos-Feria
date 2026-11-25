@@ -1,7 +1,8 @@
 // Medios de pago con los que se cobra en el puesto. Una venta se puede pagar
 // con varios (por ejemplo, varias Cuenta DNI por el tope del reintegro).
 
-export type MetodoPago = 'efectivo' | 'debito' | 'credito' | 'cuenta-dni' | 'qr' | 'transferencia';
+/** `debe`: lo que el cliente quedó debiendo; se salda después desde "Ventas del día". */
+export type MetodoPago = 'efectivo' | 'debito' | 'credito' | 'cuenta-dni' | 'qr' | 'transferencia' | 'debe';
 
 export interface Pago {
 	id: string;
@@ -9,6 +10,7 @@ export interface Pago {
 	monto: number;
 }
 
+/** Medios con los que se paga en el momento (los botones de la hoja de cobro). */
 export const METODOS: { id: MetodoPago; nombre: string }[] = [
 	{ id: 'efectivo', nombre: 'Efectivo' },
 	{ id: 'debito', nombre: 'Débito' },
@@ -18,9 +20,15 @@ export const METODOS: { id: MetodoPago; nombre: string }[] = [
 	{ id: 'transferencia', nombre: 'Transferencia' },
 ];
 
-export const nombreMetodo = (id: string) => METODOS.find((m) => m.id === id)?.nombre ?? id;
-
 const centavos = (n: number) => Math.round(n * 100);
+
+const TODOS = [...METODOS, { id: 'debe' as const, nombre: 'Queda debiendo' }];
+
+export const nombreMetodo = (id: string) => TODOS.find((m) => m.id === id)?.nombre ?? id;
+
+/** Lo que todavía se debe de una venta. */
+export const deuda = (pagos: Pago[] | undefined) =>
+	(pagos ?? []).filter((p) => p.metodo === 'debe').reduce((s, p) => s + centavos(p.monto), 0) / 100;
 
 export interface EstadoCobro {
 	pagado: number;
@@ -74,9 +82,9 @@ export function resumenPagos(pagos: Pago[] | undefined): string {
 	return [...cuenta].map(([m, n]) => `${nombreMetodo(m)}${n > 1 ? ` ×${n}` : ''}`).join(' + ');
 }
 
-/** Total cobrado por medio de pago, en el orden de METODOS. */
+/** Total por medio de pago (lo adeudado va al final), en el orden de los botones. */
 export function totalesPorMetodo(pagos: Pago[]): { id: MetodoPago; nombre: string; total: number }[] {
-	return METODOS.map((m) => ({
+	return TODOS.map((m) => ({
 		...m,
 		total: pagos.filter((p) => p.metodo === m.id).reduce((s, p) => s + centavos(p.monto), 0) / 100,
 	})).filter((m) => m.total > 0);

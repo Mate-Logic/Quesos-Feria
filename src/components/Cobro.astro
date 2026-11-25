@@ -27,6 +27,17 @@ import { METODOS } from '../lib/pagos';
 			}
 		</fieldset>
 
+		<!-- Casos raros: se ven chicos y no ocupan lugar hasta que se tocan. -->
+		<div class="extras">
+			<button id="cobro-nota-boton" class="extra" type="button">+ Nota</button>
+			<button id="cobro-debe" class="extra" type="button">Queda debiendo</button>
+		</div>
+
+		<label id="cobro-nota-campo" class="nota" hidden>
+			<span id="cobro-nota-etiqueta">Nota</span>
+			<input id="cobro-nota" type="text" autocomplete="off" autocapitalize="sentences" maxlength="140" />
+		</label>
+
 		<ul id="cobro-pagos" class="pagos" aria-label="Pagos cargados"></ul>
 
 		<footer class="cobro-acciones">
@@ -158,6 +169,54 @@ import { METODOS } from '../lib/pagos';
 
 	.metodo:active {
 		background: #fdeef5;
+		border-color: var(--rosa);
+	}
+
+	.extras {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 0.45rem;
+	}
+
+	.extra {
+		min-height: 44px;
+		border: 1.5px dashed #c9c9d3;
+		border-radius: 12px;
+		background: none;
+		color: var(--texto-suave);
+		font: inherit;
+		font-size: 0.92rem;
+		font-weight: 700;
+		cursor: pointer;
+	}
+
+	.extra[aria-pressed='true'] {
+		border-style: solid;
+		border-color: var(--rosa);
+		color: var(--rosa);
+	}
+
+	.nota {
+		display: grid;
+		gap: 0.25rem;
+		font-size: 0.85rem;
+		font-weight: 600;
+		color: var(--texto-suave);
+	}
+
+	.nota input {
+		width: 100%;
+		min-height: 48px;
+		padding: 0.5rem 0.75rem;
+		border: 1.5px solid #d9d9e0;
+		border-radius: 12px;
+		font: inherit;
+		font-size: 1.05rem;
+		color: var(--texto);
+		background: #fff;
+	}
+
+	.nota input[aria-invalid='true'] {
 		border-color: var(--rosa);
 	}
 
