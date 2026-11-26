@@ -8,11 +8,13 @@ import { marcaPorId } from '../marcas';
 import { nombreMetodo } from '../pagos';
 import type { FilaProducto, Reporte } from './reporte';
 
-const ROSA: [number, number, number] = [232, 31, 118];
-const CELESTE: [number, number, number] = [0, 174, 195];
-/** Celeste más oscuro para las velas: se distingue del rosa y se ve al imprimir. */
-const PETROLEO: [number, number, number] = [0, 139, 163];
-const MARGEN = 14;
+// Se imprime en blanco y negro, en A4: nada se distingue por color, solo por
+// negro, grises y relleno. Las líneas no son muy claras para que no se pierdan.
+const NEGRO = '#141414';
+const GRIS_BARRA = '#464646';
+const GRIS_LINEA = '#969696';
+const GRIS_ENCABEZADO = '#dedede';
+const MARGEN = 15;
 
 const FECHA = new Intl.DateTimeFormat('es-AR', { timeZone: ZONA, weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 const CORTA = new Intl.DateTimeFormat('es-AR', { timeZone: ZONA, weekday: 'short', day: '2-digit', month: '2-digit' });
@@ -28,9 +30,8 @@ export function reporteAPdf(reporte: Reporte, emitido = Date.now()): jsPDF {
 	const fecha = FECHA.format(reporte.dia);
 	doc.setProperties({ title: limpiar(`Reporte de ventas - ${fecha}`) });
 
-	// Encabezado: dos franjas finas con los colores de la feria (gastan poca tinta).
-	doc.setFillColor(...ROSA).rect(MARGEN, 10, (ancho - 2 * MARGEN) / 2, 2, 'F');
-	doc.setFillColor(...CELESTE).rect(ancho / 2, 10, (ancho - 2 * MARGEN) / 2, 2, 'F');
+	// Encabezado: una línea gruesa (gasta poca tinta).
+	doc.setFillColor(NEGRO).rect(MARGEN, 10, ancho - 2 * MARGEN, 1.2, 'F');
 	doc.setFont('helvetica', 'bold').setFontSize(18).text('Lácteos Huella Pampa', MARGEN, 21);
 	doc.setFont('helvetica', 'normal').setFontSize(11).text('Reporte de ventas · Mercados Bonaerenses', MARGEN, 27);
 	doc.text(limpiar(fecha.charAt(0).toUpperCase() + fecha.slice(1)), MARGEN, 33);
@@ -42,21 +43,23 @@ export function reporteAPdf(reporte: Reporte, emitido = Date.now()): jsPDF {
 	let y = 42;
 	/** Título y tabla. `numeros` son las columnas alineadas a la derecha. */
 	const seccion = (titulo: string, encabezado: string[], filas: RowInput[], numeros: number[], extra: UserOptions = {}) => {
-		// Que el título no quede solo al pie de una hoja.
-		if (y > alto - 45) {
+		// Una tabla que entra en una hoja no se corta: pasa entera a la siguiente.
+		// Si es más larga que una hoja, al menos el título no queda solo al pie.
+		const estimado = 14 + (filas.length + 2) * 7.2;
+		if (y + (estimado < alto - 40 ? estimado : 45) > alto - 18) {
 			doc.addPage();
 			y = 18;
 		}
-		doc.setFont('helvetica', 'bold').setFontSize(12).setTextColor(20).text(titulo, MARGEN, y);
+		doc.setFont('helvetica', 'bold').setFontSize(12).setTextColor(NEGRO).text(titulo, MARGEN, y);
 		autoTable(doc, {
 			startY: y + 2.5,
 			margin: { left: MARGEN, right: MARGEN, bottom: 18 },
 			head: [encabezado],
 			body: filas,
 			theme: 'grid',
-			styles: { fontSize: 9, cellPadding: 1.6, textColor: 20, lineColor: 200, valign: 'top' },
-			headStyles: { fillColor: 235, textColor: 20, fontStyle: 'bold' },
-			footStyles: { fillColor: 245, textColor: 20, fontStyle: 'bold' },
+			styles: { fontSize: 10, cellPadding: 1.5, textColor: NEGRO, lineColor: GRIS_LINEA, valign: 'top' },
+			headStyles: { fillColor: GRIS_ENCABEZADO, textColor: NEGRO, fontStyle: 'bold' },
+			footStyles: { fillColor: 240, textColor: NEGRO, fontStyle: 'bold' },
 			showFoot: 'lastPage',
 			rowPageBreak: 'avoid',
 			...extra,
@@ -123,7 +126,7 @@ export function reporteAPdf(reporte: Reporte, emitido = Date.now()): jsPDF {
 		const primeras = [...filas].sort((a, b) => valor(b) - valor(a)).slice(0, 8);
 		if (!primeras.length) return;
 		lugar(primeras.length * 7 + 8);
-		doc.setFont('helvetica', 'bold').setFontSize(12).setTextColor(20).text(titulo, MARGEN, y);
+		doc.setFont('helvetica', 'bold').setFontSize(12).setTextColor(NEGRO).text(titulo, MARGEN, y);
 		y += 3;
 		const izquierda = MARGEN + 62;
 		const largo = ancho - MARGEN - izquierda - 34;
@@ -131,30 +134,30 @@ export function reporteAPdf(reporte: Reporte, emitido = Date.now()): jsPDF {
 		doc.setFont('helvetica', 'normal').setFontSize(9);
 		for (const f of primeras) {
 			const nombre = doc.splitTextToSize(limpiar(`${f.nombre} (${f.marca})`), 59) as string[];
-			doc.setTextColor(20).text(nombre.length > 1 ? `${nombre[0]}…` : nombre[0]!, izquierda - 2, y + 3.8, { align: 'right' });
+			doc.setTextColor(NEGRO).text(nombre.length > 1 ? `${nombre[0]}…` : nombre[0]!, izquierda - 2, y + 3.8, { align: 'right' });
 			const w = Math.max(0.8, (valor(f) / maximo) * largo);
-			doc.setFillColor(...ROSA).rect(izquierda, y + 0.8, w, 4.4, 'F');
+			doc.setFillColor(GRIS_BARRA).rect(izquierda, y + 0.8, w, 4.4, 'F');
 			doc.text(limpiar(texto(f)), izquierda + w + 2, y + 3.8);
 			y += 7;
 		}
-		doc.setDrawColor(160).setLineWidth(0.2).line(izquierda, y - primeras.length * 7, izquierda, y);
+		doc.setDrawColor(GRIS_LINEA).setLineWidth(0.2).line(izquierda, y - primeras.length * 7, izquierda, y);
 		y += 9;
 	};
 
 	barras('Productos más vendidos (veces vendido)', reporte.porProducto, (f) => f.productos, (f) => `${f.productos}${f.kg ? ` · ${kilos(f.kg)}` : ''}`);
 	barras('Productos que más plata dejaron', reporte.porProducto, (f) => f.total, (f) => pesos(f.total));
 
-	/** Velas por hora: se leen sin color (hueca = subió, llena = bajó). */
+	/** Velas por hora: hueca = la última fue igual o mayor; negra = fue menor. */
 	const graficoVelas = () => {
 		const velas = reporte.porHora;
 		if (!velas.length) return;
 		lugar(88);
-		doc.setFont('helvetica', 'bold').setFontSize(12).setTextColor(20).text('Velas por hora (importe de cada venta)', MARGEN, y);
-		doc.setFont('helvetica', 'normal').setFontSize(8).setTextColor(90);
+		doc.setFont('helvetica', 'bold').setFontSize(12).setTextColor(NEGRO).text('Velas por hora (importe de cada venta)', MARGEN, y);
+		doc.setFont('helvetica', 'normal').setFontSize(9).setTextColor('#3c3c3c');
 		doc.text('Mecha: de la venta más chica a la más grande de la hora. Cuerpo: entre la primera y la última venta.', MARGEN, y + 4.5);
-		doc.setDrawColor(...PETROLEO).setLineWidth(0.4).rect(MARGEN, y + 7, 3, 3, 'S');
+		doc.setDrawColor(NEGRO).setLineWidth(0.5).rect(MARGEN, y + 7, 3, 3, 'S');
 		doc.text('La última fue igual o mayor que la primera', MARGEN + 5, y + 9.5);
-		doc.setFillColor(...ROSA).rect(MARGEN + 80, y + 7, 3, 3, 'F');
+		doc.setFillColor(NEGRO).rect(MARGEN + 80, y + 7, 3, 3, 'F');
 		doc.text('La última fue menor', MARGEN + 85, y + 9.5);
 
 		const arriba = y + 15;
@@ -167,7 +170,7 @@ export function reporteAPdf(reporte: Reporte, emitido = Date.now()): jsPDF {
 		const altura = (n: number) => base - (n / tope) * (base - arriba);
 		for (let i = 0; i <= 4; i++) {
 			const n = (tope / 4) * i;
-			doc.setDrawColor(215).setLineWidth(0.15).line(izquierda, altura(n), ancho - MARGEN, altura(n));
+			doc.setDrawColor('#b9b9b9').setLineWidth(0.2).line(izquierda, altura(n), ancho - MARGEN, altura(n));
 			doc.text(limpiar(pesos(n).replace(/,00$/, '')), izquierda - 2, altura(n) + 1, { align: 'right' });
 		}
 		// Las horas sin ventas dejan su lugar vacío.
@@ -181,13 +184,12 @@ export function reporteAPdf(reporte: Reporte, emitido = Date.now()): jsPDF {
 		for (const v of velas) {
 			const x = izquierda + paso * (v.hora - desde + 0.5);
 			const sube = v.ultima >= v.primera;
-			const color = sube ? PETROLEO : ROSA;
 			const cima = altura(Math.max(v.primera, v.ultima));
 			const cuerpo = Math.max(0.6, altura(Math.min(v.primera, v.ultima)) - cima);
-			doc.setDrawColor(...color).setLineWidth(0.4).line(x, altura(v.mayor), x, altura(v.menor));
-			doc.setFillColor(sube ? '#ffffff' : '#e81f76').rect(x - grosor / 2, cima, grosor, cuerpo, 'FD');
+			doc.setDrawColor(NEGRO).setLineWidth(0.5).line(x, altura(v.mayor), x, altura(v.menor));
+			doc.setFillColor(sube ? '#ffffff' : NEGRO).rect(x - grosor / 2, cima, grosor, cuerpo, 'FD');
 		}
-		y = base + 11;
+		y = base + 14;
 	};
 	graficoVelas();
 
@@ -216,7 +218,7 @@ export function reporteAPdf(reporte: Reporte, emitido = Date.now()): jsPDF {
 
 	// Una tabla por venta: qué se llevó y, debajo, cómo la pagó.
 	lugar(40);
-	doc.setFont('helvetica', 'bold').setFontSize(12).setTextColor(20).text('Detalle de cada venta', MARGEN, y);
+	doc.setFont('helvetica', 'bold').setFontSize(12).setTextColor(NEGRO).text('Detalle de cada venta', MARGEN, y);
 	y += 3;
 	reporte.ventas.forEach((venta, i) => {
 		const total = venta.productos.reduce((s, p) => s + Math.round(p.total * 100), 0) / 100;
@@ -232,15 +234,15 @@ export function reporteAPdf(reporte: Reporte, emitido = Date.now()): jsPDF {
 			pageBreak: 'avoid',
 			rowPageBreak: 'avoid',
 			theme: 'grid',
-			styles: { fontSize: 9, cellPadding: 1.4, textColor: 20, lineColor: 200 },
-			headStyles: { fillColor: 235, textColor: 20, fontStyle: 'bold' },
-			footStyles: { fillColor: 255, textColor: 20, fontStyle: 'bold' },
+			styles: { fontSize: 10, cellPadding: 1.3, textColor: NEGRO, lineColor: GRIS_LINEA },
+			headStyles: { fillColor: GRIS_ENCABEZADO, textColor: NEGRO, fontStyle: 'bold' },
+			footStyles: { fillColor: 255, textColor: NEGRO, fontStyle: 'bold' },
 			// Los encabezados de las columnas con números, alineados como los números.
 			didParseCell: (celda) => {
 				if (celda.section === 'head' && celda.row.index === 1 && celda.column.index >= 2) celda.cell.styles.halign = 'right';
 			},
 			showFoot: 'lastPage',
-			columnStyles: { 1: { cellWidth: 30 }, 2: { cellWidth: 24, halign: 'right' }, 3: { cellWidth: 28, halign: 'right' }, 4: { cellWidth: 30, halign: 'right' } },
+			columnStyles: { 1: { cellWidth: 32 }, 2: { cellWidth: 24, halign: 'right' }, 3: { cellWidth: 30, halign: 'right' }, 4: { cellWidth: 30, halign: 'right' } },
 			head: [
 				[
 					{ content: limpiar(titulo), colSpan: 4 },
@@ -265,7 +267,7 @@ export function reporteAPdf(reporte: Reporte, emitido = Date.now()): jsPDF {
 	const paginas = doc.getNumberOfPages();
 	for (let pagina = 1; pagina <= paginas; pagina++) {
 		doc.setPage(pagina);
-		doc.setFont('helvetica', 'normal').setFontSize(8).setTextColor(90);
+		doc.setFont('helvetica', 'normal').setFontSize(9).setTextColor('#3c3c3c');
 		doc.text(limpiar(`Emitido el ${MOMENTO.format(emitido)}`), MARGEN, alto - 8);
 		doc.text(`Página ${pagina} de ${paginas}`, ancho - MARGEN, alto - 8, { align: 'right' });
 	}

@@ -124,6 +124,13 @@ La app la usan personas mayores en el puesto, con las manos ocupadas. Tiene que 
 - Se guarda en milisegundos (`Date.now()`) y se muestra y agrupa **siempre en hora argentina**, aunque el celular tenga otra zona.
 - Se usan `ZONA`, `hora()`, `diaYHora()`, `inicioDelDia()` y `fechaIso()` de `src/lib/formato.ts`. No se usan `setHours`, `getDate` ni `Intl.DateTimeFormat` sin `timeZone`.
 
+### 9. El reporte en PDF se imprime en blanco y negro, en hoja A4
+
+- Nada se distingue por color: solo negro, grises y relleno (por ejemplo, vela hueca o llena).
+- Letra de 10 pt en las tablas, líneas y grises que no desaparezcan al imprimir, y márgenes de 15 mm.
+- Una tabla o venta que entra en una hoja no se corta entre dos.
+- Antes de darlo por terminado, se renderiza en grises (`pdftoppm -gray`) y se revisan todas las hojas.
+
 ## Development
 
 When starting the dev server, use background mode:
