@@ -21,6 +21,8 @@ export interface Venta {
 	creada: number;
 	/** Momento de cobro; existe solo para las ventas finalizadas. */
 	finalizada?: number;
+	/** Momento en que se canceló; las canceladas viejas no lo tienen. */
+	cancelada?: number;
 	cliente: string;
 	estado: 'abierta' | 'finalizada' | 'cancelada';
 	productos: ProductoVenta[];

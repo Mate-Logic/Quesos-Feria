@@ -13,8 +13,9 @@ Se usa desde el celular, en el puesto, muchas veces sin señal. Por eso es una *
 - **Escanear ticket**: en el celular se abre la cámara con un recuadro para encuadrar la etiqueta de la balanza. También se puede elegir una foto de la galería (en la PC, solo esa opción).
 - **Lectura sin conexión**: el OCR ([Tesseract.js](https://github.com/naptha/tesseract.js)) corre en el celular. Lee producto, peso, precio por kilo y total, y muestra todo para revisarlo antes de guardar.
 - **Varias marcas**: en el puesto venden Huella Pampa, Oliverio, Mamá Mecha y Milkey, cada una con su balanza y su formato de ticket. Cada venta se anota con su marca.
-- **Lista de ventas** agrupada por día, con el total del día y por marca. Se pueden editar, y borrar con opción de deshacer.
-- **Reporte en PDF** de un día, para mandar por WhatsApp e imprimir: total, cómo se cobró, quiénes quedaron debiendo, totales por marca y por producto, y el detalle de cada venta. El botón **Compartir PDF** está en *Ventas del día* y cada día anterior tiene el suyo. El PDF se arma en el celular, sin conexión; si el navegador no puede compartir archivos, se descarga.
+- **Hora argentina (UTC-3)**: cada venta queda anotada con su hora, y los días se cortan a la medianoche de Argentina aunque el celular tenga otra zona.
+- **Lista de ventas** de hoy aparte de la de días anteriores, con el total del día y por marca. Se pueden editar, y borrar con opción de deshacer.
+- **Reporte en PDF** de un día, para mandar por WhatsApp e imprimir: total, cómo se cobró, quiénes quedaron debiendo, totales por marca y por producto, y el detalle de cada venta. El botón **Compartir PDF** está en *Ventas del día* y en la pestaña **Anteriores**, que lista los días pasados, cada uno tiene el suyo. El PDF se arma en el celular, sin conexión; si el navegador no puede compartir archivos, se descarga.
 
 ## Tecnologías
 

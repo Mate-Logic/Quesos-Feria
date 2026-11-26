@@ -8,6 +8,8 @@ export interface Pago {
 	id: string;
 	metodo: MetodoPago;
 	monto: number;
+	/** Cuándo se cobró, solo si fue después de finalizar la venta (saldar una deuda). */
+	momento?: number;
 }
 
 /** Medios con los que se paga en el momento (los botones de la hoja de cobro). */

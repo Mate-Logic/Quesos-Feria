@@ -1,6 +1,6 @@
 // Dibuja el resumen, las ventas abiertas y el historial.
 
-import { hora, inicioDelDia, kilos, nombreDelDia, pesos } from '../formato';
+import { diaYHora, hora, inicioDelDia, kilos, nombreDelDia, pesos } from '../formato';
 import { MARCAS, marcaPorId } from '../marcas';
 import { deuda, estadoCobro, nombreMetodo, totalesPorMetodo } from '../pagos';
 import { ruta } from '../rutas';
@@ -10,8 +10,6 @@ export interface AccionesLista {
 	alEditar(venta: Venta, producto: ProductoVenta): void;
 	alBorrar(venta: Venta): void;
 	alSaldar(venta: Venta): void;
-	/** Si está, cada día muestra un botón para sacar su reporte en PDF. */
-	alReportar?(dia: number): void;
 }
 
 export interface AccionesVentasAbiertas {
@@ -288,15 +286,8 @@ export function dibujarLista(
 		return;
 	}
 
-	const dias = new Map<number, Venta[]>();
-	for (const v of [...ventas].sort((a, b) => (b.finalizada ?? b.creada) - (a.finalizada ?? a.creada))) {
-		const dia = inicioDelDia(v.finalizada ?? v.creada);
-		if (!dias.has(dia)) dias.set(dia, []);
-		dias.get(dia)!.push(v);
-	}
-
 	contenedor.replaceChildren(
-		...[...dias.entries()].map(([dia, delDia]) => {
+		...porDia(ventas).map(([dia, delDia]) => {
 			const grupo = document.createElement('section');
 			grupo.className = 'dia';
 			const cabecera = document.createElement('h3');
@@ -306,11 +297,6 @@ export function dibujarLista(
 			suma.className = 'dia-total';
 			suma.textContent = pesos(delDia.reduce((s, v) => s + totalVenta(v), 0));
 			cabecera.append(nombre, suma);
-			if (acciones.alReportar) {
-				const reporte = boton('dia-reporte', 'PDF', `Compartir el reporte en PDF: ${nombreDelDia(dia)}`);
-				reporte.addEventListener('click', () => acciones.alReportar!(dia));
-				cabecera.append(reporte);
-			}
 			const lista = document.createElement('ul');
 			lista.className = 'historial-ventas';
 			lista.append(...delDia.map((v) => itemVenta(v, acciones)));
@@ -326,7 +312,8 @@ function itemVenta(venta: Venta, acciones: AccionesLista): HTMLLIElement {
 	const cabecera = document.createElement('div');
 	cabecera.className = 'venta-historial-cabecera';
 	const nombre = document.createElement('strong');
-	nombre.textContent = venta.cliente || `Venta de las ${hora(venta.finalizada ?? venta.creada)}`;
+	const cobrada = hora(venta.finalizada ?? venta.creada);
+	nombre.textContent = venta.cliente ? `${cobrada} · ${venta.cliente}` : `Venta de las ${cobrada}`;
 	const total = document.createElement('strong');
 	total.textContent = pesos(totalVenta(venta));
 	cabecera.append(nombre, total);
@@ -339,7 +326,7 @@ function itemVenta(venta: Venta, acciones: AccionesLista): HTMLLIElement {
 		...pagados.map((p) => {
 			const fila = document.createElement('li');
 			const medio = document.createElement('span');
-			medio.textContent = nombreMetodo(p.metodo);
+			medio.textContent = p.momento ? `${nombreMetodo(p.metodo)} · cobrado ${diaYHora(p.momento)}` : nombreMetodo(p.metodo);
 			const monto = document.createElement('strong');
 			monto.textContent = pesos(p.monto);
 			fila.append(medio, monto);
@@ -410,6 +397,52 @@ function itemVenta(venta: Venta, acciones: AccionesLista): HTMLLIElement {
 	return li;
 }
 
+/** Días que están desplegados, para que sigan así al volver a dibujar. */
+const diasAbiertos = new Set<number>();
+
+/** Los días anteriores, uno por renglón: al tocarlo se ven sus ventas y su PDF. */
+export function dibujarDias(contenedor: HTMLElement, ventas: Venta[], acciones: AccionesLista, alReportar: (dia: number) => void): void {
+	if (!ventas.length) {
+		dibujarLista(contenedor, ventas, acciones, 'Todavía no hay ventas de días anteriores.');
+		return;
+	}
+	contenedor.replaceChildren(
+		...porDia(ventas).map(([dia, delDia]) => {
+			const grupo = document.createElement('details');
+			grupo.className = 'dia-anterior';
+			grupo.open = diasAbiertos.has(dia);
+			grupo.addEventListener('toggle', () => (grupo.open ? diasAbiertos.add(dia) : diasAbiertos.delete(dia)));
+			const resumen = document.createElement('summary');
+			const nombre = document.createElement('span');
+			nombre.textContent = nombreDelDia(dia);
+			const cantidad = document.createElement('small');
+			cantidad.textContent = `${delDia.length} ${delDia.length === 1 ? 'venta' : 'ventas'}`;
+			nombre.append(cantidad);
+			const suma = document.createElement('strong');
+			suma.textContent = pesos(delDia.reduce((s, v) => s + totalVenta(v), 0));
+			resumen.append(nombre, suma);
+			const reporte = boton('dia-reporte', 'Compartir PDF', `Compartir el reporte en PDF: ${nombreDelDia(dia)}`);
+			reporte.addEventListener('click', () => alReportar(dia));
+			const lista = document.createElement('ul');
+			lista.className = 'historial-ventas';
+			lista.append(...delDia.map((v) => itemVenta(v, acciones)));
+			grupo.append(resumen, reporte, lista);
+			return grupo;
+		}),
+	);
+}
+
+/** Agrupa por día (hora argentina), del más nuevo al más viejo. */
+function porDia(ventas: Venta[]): [number, Venta[]][] {
+	const dias = new Map<number, Venta[]>();
+	for (const v of [...ventas].sort((a, b) => (b.finalizada ?? b.creada) - (a.finalizada ?? a.creada))) {
+		const dia = inicioDelDia(v.finalizada ?? v.creada);
+		if (!dias.has(dia)) dias.set(dia, []);
+		dias.get(dia)!.push(v);
+	}
+	return [...dias];
+}
+
 export function dibujarCanceladas(contenedor: HTMLElement, ventas: Venta[]): void {
 	if (!ventas.length) {
 		contenedor.replaceChildren();
@@ -423,7 +456,7 @@ export function dibujarCanceladas(contenedor: HTMLElement, ventas: Venta[]): voi
 			const cliente = document.createElement('span');
 			cliente.textContent = venta.cliente || `Venta de las ${hora(venta.creada)}`;
 			const detalle = document.createElement('small');
-			detalle.textContent = `${venta.productos.length} ${venta.productos.length === 1 ? 'producto' : 'productos'} · ${pesos(totalVenta(venta))} · Cancelada`;
+			detalle.textContent = `${venta.productos.length} ${venta.productos.length === 1 ? 'producto' : 'productos'} · ${pesos(totalVenta(venta))} · Cancelada ${diaYHora(venta.cancelada ?? venta.creada)}`;
 			li.append(cliente, detalle);
 			return li;
 		}),

@@ -118,6 +118,12 @@ La app la usan personas mayores en el puesto, con las manos ocupadas. Tiene que 
 - Después del push, se espera el deploy de GitHub Pages (`gh run watch`) y se verifica la versión publicada.
 - En algunas computadoras sin AVX, `astro build`, `astro check` y `astro dev` se caen con "Illegal instruction" porque el compilador nativo de Astro no corre ahí. En ese caso, los tipos se chequean con `bunx tsc` y el build se valida en CI y en la versión publicada.
 
+### 8. Fechas y horas: siempre hora argentina (UTC-3)
+
+- Toda venta queda anotada con su hora: cuándo se inició, cuándo se cobró, cuándo se saldó una deuda y cuándo se canceló.
+- Se guarda en milisegundos (`Date.now()`) y se muestra y agrupa **siempre en hora argentina**, aunque el celular tenga otra zona.
+- Se usan `ZONA`, `hora()`, `diaYHora()`, `inicioDelDia()` y `fechaIso()` de `src/lib/formato.ts`. No se usan `setHours`, `getDate` ni `Intl.DateTimeFormat` sin `timeZone`.
+
 ## Development
 
 When starting the dev server, use background mode:

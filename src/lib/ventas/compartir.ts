@@ -1,6 +1,7 @@
 // Arma el reporte del día en PDF y lo manda por WhatsApp (o lo que se elija en
 // el menú de compartir). Funciona sin conexión: el archivo se arma en el celular.
 
+import { fechaIso } from '../formato';
 import type { Venta } from './db';
 import { armarReporte } from './reporte';
 
@@ -8,10 +9,7 @@ import { armarReporte } from './reporte';
 export async function compartirReporte(ventas: Venta[], dia: number): Promise<'compartido' | 'descargado'> {
 	const { reporteAPdf } = await import('./pdf');
 	const reporte = armarReporte(ventas, dia);
-	// La fecha del nombre es la local: con toISOString una feria de noche quedaría con la del día siguiente.
-	const d = new Date(reporte.dia);
-	const fecha = [d.getFullYear(), d.getMonth() + 1, d.getDate()].map((n) => String(n).padStart(2, '0')).join('-');
-	const archivo = new File([reporteAPdf(reporte).output('blob')], `reporte-ventas-${fecha}.pdf`, { type: 'application/pdf' });
+	const archivo = new File([reporteAPdf(reporte).output('blob')], `reporte-ventas-${fechaIso(reporte.dia)}.pdf`, { type: 'application/pdf' });
 
 	if (navigator.canShare?.({ files: [archivo] })) {
 		try {

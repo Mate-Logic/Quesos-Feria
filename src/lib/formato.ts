@@ -32,20 +32,33 @@ export function leerNumero(texto: string, esPeso = false): number | null {
 	return Number.isFinite(n) ? n : null;
 }
 
-const DIA = new Intl.DateTimeFormat('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
-const HORA = new Intl.DateTimeFormat('es-AR', { hour: '2-digit', minute: '2-digit' });
+// Fechas y horas: siempre las de Argentina (UTC-3, sin horario de verano), aunque
+// el celular tenga otra zona configurada. En la base se guardan milisegundos.
+export const ZONA = 'America/Argentina/Buenos_Aires';
+const DESFASE = 3 * 3_600_000;
+const UN_DIA = 86_400_000;
 
+const DIA = new Intl.DateTimeFormat('es-AR', { timeZone: ZONA, weekday: 'long', day: 'numeric', month: 'long' });
+const HORA = new Intl.DateTimeFormat('es-AR', { timeZone: ZONA, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+const DIA_CORTO = new Intl.DateTimeFormat('es-AR', { timeZone: ZONA, day: '2-digit', month: '2-digit' });
+
+/** "14:05" */
 export const hora = (ms: number) => HORA.format(ms);
 
+/** "21/11 14:05" */
+export const diaYHora = (ms: number) => `${DIA_CORTO.format(ms)} ${HORA.format(ms)}`;
+
+/** Medianoche argentina del día en que cae `ms`. */
 export function inicioDelDia(ms: number): number {
-	const d = new Date(ms);
-	d.setHours(0, 0, 0, 0);
-	return d.getTime();
+	return Math.floor((ms - DESFASE) / UN_DIA) * UN_DIA + DESFASE;
 }
 
-/** "Hoy", "Ayer" o "lunes 23 de noviembre". */
+/** "2026-11-21", para los nombres de archivo. */
+export const fechaIso = (ms: number) => new Date(ms - DESFASE).toISOString().slice(0, 10);
+
+/** "Hoy", "Ayer" o "Lunes, 23 de noviembre". */
 export function nombreDelDia(ms: number, ahora = Date.now()): string {
-	const dias = Math.round((inicioDelDia(ahora) - inicioDelDia(ms)) / 86_400_000);
+	const dias = Math.round((inicioDelDia(ahora) - inicioDelDia(ms)) / UN_DIA);
 	if (dias === 0) return 'Hoy';
 	if (dias === 1) return 'Ayer';
 	const texto = DIA.format(ms);

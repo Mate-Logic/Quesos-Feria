@@ -3,7 +3,7 @@
 
 import { jsPDF } from 'jspdf';
 import { autoTable, type RowInput, type UserOptions } from 'jspdf-autotable';
-import { kilos, pesos } from '../formato';
+import { diaYHora, hora, kilos, pesos, ZONA } from '../formato';
 import { marcaPorId } from '../marcas';
 import { nombreMetodo } from '../pagos';
 import type { Reporte } from './reporte';
@@ -12,10 +12,8 @@ const ROSA: [number, number, number] = [232, 31, 118];
 const CELESTE: [number, number, number] = [0, 174, 195];
 const MARGEN = 14;
 
-const FECHA = new Intl.DateTimeFormat('es-AR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-// En 24 horas: "10:00 a. m." no entra en una columna angosta.
-const HORA = new Intl.DateTimeFormat('es-AR', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
-const MOMENTO = new Intl.DateTimeFormat('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+const FECHA = new Intl.DateTimeFormat('es-AR', { timeZone: ZONA, weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+const MOMENTO = new Intl.DateTimeFormat('es-AR', { timeZone: ZONA, day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
 
 /** Las fuentes del PDF solo tienen el alfabeto latino: lo demás (emojis, etc.) saldría como basura. */
 const limpiar = (texto: string) => texto.replace(/\s/g, ' ').replace(/[^\x20-\x7e\xa0-\xff–—‘’“”…•€]/gu, '').trim();
@@ -77,7 +75,7 @@ export function reporteAPdf(reporte: Reporte, emitido = Date.now()): jsPDF {
 			'Quedaron debiendo',
 			['Cliente', 'Nota', 'Hora', 'Debe'],
 			reporte.deudas.map(({ venta, monto }) =>
-				[venta.cliente || 'Sin nombre', venta.nota ?? '', HORA.format(venta.finalizada ?? venta.creada), pesos(monto)].map(limpiar),
+				[venta.cliente || 'Sin nombre', venta.nota ?? '', hora(venta.finalizada ?? venta.creada), pesos(monto)].map(limpiar),
 			),
 			[3],
 		);
@@ -102,7 +100,7 @@ export function reporteAPdf(reporte: Reporte, emitido = Date.now()): jsPDF {
 		['Hora', 'Cliente', 'Productos', 'Pago', 'Total'],
 		reporte.ventas.map((venta) =>
 			[
-				HORA.format(venta.finalizada ?? venta.creada),
+				hora(venta.finalizada ?? venta.creada),
 				venta.cliente || '-',
 				venta.productos
 					.map((p) => {
@@ -110,7 +108,9 @@ export function reporteAPdf(reporte: Reporte, emitido = Date.now()): jsPDF {
 						return limpiar(`${p.producto} (${marcaPorId(p.marca)?.nombre ?? p.marca})${peso}: ${pesos(p.total)}`);
 					})
 					.join('\n'),
-				(venta.pagos ?? []).map((p) => limpiar(`${nombreMetodo(p.metodo)} ${pesos(p.monto)}`)).join('\n'),
+				(venta.pagos ?? [])
+					.map((p) => limpiar(`${nombreMetodo(p.metodo)} ${pesos(p.monto)}${p.momento ? ` (cobrado ${diaYHora(p.momento)})` : ''}`))
+					.join('\n'),
 				pesos(venta.productos.reduce((s, p) => s + p.total, 0)),
 			].map((celda) => celda.split('\n').map(limpiar).join('\n')),
 		),
