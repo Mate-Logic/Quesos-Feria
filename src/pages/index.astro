@@ -1681,4 +1681,78 @@ import { ruta } from '../lib/rutas';
 			transform: translate(-50%, 12px);
 		}
 	}
+
+	/* --- Ajustes para celulares --- */
+	/* Cuatro acciones en una fila: ícono arriba y texto abajo, para que entren en 360 px. */
+	.acciones {
+		grid-auto-columns: minmax(0, 1fr);
+		gap: 0.4rem;
+	}
+
+	.acciones .accion {
+		grid-auto-flow: row;
+		gap: 0.2rem;
+		min-width: 0;
+		padding-inline: 0.1rem;
+		font-size: 0.9rem;
+	}
+
+	/* Los nombres se leen enteros, aunque ocupen dos renglones. */
+	.carrusel :global(.productos-abiertos li) {
+		padding: 0.4rem 0.35rem 0.4rem 0;
+		font-size: 1.05rem;
+		line-height: 1.2;
+	}
+
+	.carrusel :global(.productos-abiertos li > span:first-child) {
+		min-width: 0;
+		white-space: normal;
+	}
+
+	.carrusel :global(.productos-abiertos li strong) {
+		flex: none;
+	}
+
+	.carrusel :global(.productos-abiertos small) {
+		display: block;
+		color: #b3125a;
+		font-weight: 600;
+	}
+
+	.lista :global(.historial-producto-info strong),
+	.lista :global(.historial-producto-info small) {
+		white-space: normal;
+	}
+
+	.lista :global(.borrar-venta) {
+		min-height: 44px;
+	}
+
+	/* Pantallas bajitas: se achica lo de alrededor para que se vean más productos. */
+	@media (max-height: 600px) {
+		.acciones .accion svg {
+			width: 20px;
+			height: 20px;
+		}
+
+		.carrusel :global(.cliente-campo) {
+			gap: 0.15rem;
+			font-size: 0.75rem;
+		}
+
+		.carrusel :global(.cliente-campo input) {
+			min-height: 44px;
+			padding-block: 0.3rem;
+			font-size: 1.05rem;
+		}
+
+		.carrusel :global(.venta-abierta-acciones button) {
+			min-height: 46px;
+			font-size: 1.15rem;
+		}
+
+		.carrusel :global(.venta-abierta-pie strong) {
+			font-size: 1.5rem;
+		}
+	}
 </style>

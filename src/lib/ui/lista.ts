@@ -21,6 +21,8 @@ export interface AccionesVentasAbiertas {
 }
 
 const totalVenta = (venta: Venta) => venta.productos.reduce((suma, producto) => suma + producto.total, 0);
+/** Lo que va por unidad cuenta cada una; lo pesado, una por renglón. */
+const unidades = (productos: ProductoVenta[]) => productos.reduce((suma, p) => suma + (p.cantidad ?? 1), 0);
 const kilosVenta = (venta: Venta) => venta.productos.reduce((suma, producto) => suma + (producto.pesoKg ?? 0), 0);
 
 export function dibujarResumen(ventas: Venta[]): void {
@@ -28,7 +30,7 @@ export function dibujarResumen(ventas: Venta[]): void {
 	const deHoy = ventas.filter((v) => v.estado === 'finalizada' && (v.finalizada ?? v.creada) >= hoy);
 	const total = deHoy.reduce((s, v) => s + totalVenta(v), 0);
 	const kg = deHoy.reduce((s, v) => s + kilosVenta(v), 0);
-	const cantidadProductos = deHoy.reduce((s, v) => s + v.productos.length, 0);
+	const cantidadProductos = deHoy.reduce((s, v) => s + unidades(v.productos), 0);
 
 	document.getElementById('resumen-total')!.textContent = pesos(total);
 	document.getElementById('resumen-detalle')!.textContent = deHoy.length
@@ -232,7 +234,12 @@ function tarjetaVentaAbierta(venta: Venta, acciones: AccionesVentasAbiertas): HT
 		const filas = [...venta.productos].reverse().map((item) => {
 			const li = document.createElement('li');
 			const detalle = document.createElement('span');
-			detalle.textContent = `${item.cantidad != null ? `${item.cantidad} × ` : ''}${item.producto}${item.pesoKg != null ? ` · ${kilos(item.pesoKg)}` : ''}${item.descuento ? ` · Promo −${pesos(item.descuento)}` : ''}`;
+			detalle.textContent = `${item.cantidad != null ? `${item.cantidad} × ` : ''}${item.producto}${item.pesoKg != null ? ` · ${kilos(item.pesoKg)}` : ''}`;
+			if (item.descuento) {
+				const promo = document.createElement('small');
+				promo.textContent = `Promo −${pesos(item.descuento)}`;
+				detalle.append(promo);
+			}
 			const total = document.createElement('strong');
 			total.textContent = pesos(item.total);
 			li.append(detalle, total);
@@ -248,7 +255,7 @@ function tarjetaVentaAbierta(venta: Venta, acciones: AccionesVentasAbiertas): HT
 	// Si quedó un cobro a medias, se ve cuánto falta.
 	cantidad.textContent = venta.pagos?.length && cobro.falta > 0
 		? `Falta cobrar ${pesos(cobro.falta)}`
-		: `${venta.productos.length} ${venta.productos.length === 1 ? 'producto' : 'productos'}`;
+		: `${unidades(venta.productos)} ${unidades(venta.productos) === 1 ? 'producto' : 'productos'}`;
 	const total = document.createElement('strong');
 	total.textContent = pesos(totalVenta(venta));
 	pie.append(cantidad, total);
