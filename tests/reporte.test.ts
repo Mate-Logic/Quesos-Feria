@@ -50,6 +50,24 @@ describe('armarReporte', () => {
 		]);
 	});
 
+	test('arma las velas por hora con la primera, la mayor, la menor y la última venta', () => {
+		const con = (id: string, minutos: number, total: number) =>
+			venta(id, { finalizada: DIA + minutos * 60_000, productos: [{ ...venta(id).productos[0]!, total }] });
+		const [vela] = armarReporte([con('c', 30, 8000), con('a', 0, 5000), con('b', 10, 9000), con('d', 40, 2000)], DIA).porHora;
+		expect(vela).toMatchObject({ ventas: 4, primera: 5000, mayor: 9000, menor: 2000, ultima: 2000, total: 24000 });
+	});
+
+	test('compara con el último día anterior que tuvo ventas', () => {
+		const semana = 7 * 86_400_000;
+		const reporte = armarReporte(
+			[venta('hoy'), venta('pasada', { finalizada: DIA - semana }), venta('vieja', { finalizada: DIA - 2 * semana })],
+			DIA,
+		);
+		expect(reporte.anterior).toMatchObject({ total: 10000, cantidadVentas: 1 });
+		expect(DIA - reporte.anterior!.dia).toBeLessThan(2 * semana - 86_400_000);
+		expect(armarReporte([venta('hoy')], DIA).anterior).toBeNull();
+	});
+
 	test('avisa la diferencia cuando una venta no tiene pagos anotados', () => {
 		expect(armarReporte([venta('a', { pagos: undefined })], DIA).sinPago).toBe(10000);
 	});

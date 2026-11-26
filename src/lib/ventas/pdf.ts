@@ -6,13 +6,16 @@ import { autoTable, type RowInput, type UserOptions } from 'jspdf-autotable';
 import { diaYHora, hora, kilos, pesos, ZONA } from '../formato';
 import { marcaPorId } from '../marcas';
 import { nombreMetodo } from '../pagos';
-import type { Reporte } from './reporte';
+import type { FilaProducto, Reporte } from './reporte';
 
 const ROSA: [number, number, number] = [232, 31, 118];
 const CELESTE: [number, number, number] = [0, 174, 195];
+/** Celeste más oscuro para las velas: se distingue del rosa y se ve al imprimir. */
+const PETROLEO: [number, number, number] = [0, 139, 163];
 const MARGEN = 14;
 
 const FECHA = new Intl.DateTimeFormat('es-AR', { timeZone: ZONA, weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+const CORTA = new Intl.DateTimeFormat('es-AR', { timeZone: ZONA, weekday: 'short', day: '2-digit', month: '2-digit' });
 const MOMENTO = new Intl.DateTimeFormat('es-AR', { timeZone: ZONA, day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
 
 /** Las fuentes del PDF solo tienen el alfabeto latino: lo demás (emojis, etc.) saldría como basura. */
@@ -44,7 +47,7 @@ export function reporteAPdf(reporte: Reporte, emitido = Date.now()): jsPDF {
 			doc.addPage();
 			y = 18;
 		}
-		doc.setFont('helvetica', 'bold').setFontSize(12).text(titulo, MARGEN, y);
+		doc.setFont('helvetica', 'bold').setFontSize(12).setTextColor(20).text(titulo, MARGEN, y);
 		autoTable(doc, {
 			startY: y + 2.5,
 			margin: { left: MARGEN, right: MARGEN, bottom: 18 },
@@ -64,6 +67,32 @@ export function reporteAPdf(reporte: Reporte, emitido = Date.now()): jsPDF {
 		y = (doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 9;
 	};
 
+	const { anterior } = reporte;
+	if (anterior) {
+		const fila = (nombre: string, antes: number, ahora: number, formato: (n: number) => string) => {
+			const dif = Math.round((ahora - antes) * 1000) / 1000;
+			const signo = dif > 0 ? '+ ' : dif < 0 ? '- ' : '';
+			const porciento = antes ? ` (${signo}${Math.round((Math.abs(dif) / antes) * 100)} %)` : ' (nuevo)';
+			return [nombre, formato(antes), formato(ahora), `${signo}${formato(Math.abs(dif))}${porciento}`].map(limpiar);
+		};
+		const promedio = (total: number, n: number) => (n ? Math.round((total / n) * 100) / 100 : 0);
+		const marcas = [...new Set([...reporte.marcas, ...anterior.marcas].map((m) => m.nombre))];
+		const totalDe = (lista: typeof reporte.marcas, nombre: string) => lista.find((m) => m.nombre === nombre)?.total ?? 0;
+		seccion(
+			'Comparación con la feria anterior',
+			['', limpiar(CORTA.format(anterior.dia)), limpiar(CORTA.format(reporte.dia)), 'Diferencia'],
+			[
+				fila('Total vendido', anterior.total, reporte.total, pesos),
+				fila('Ventas', anterior.cantidadVentas, reporte.ventas.length, String),
+				fila('Promedio por venta', promedio(anterior.total, anterior.cantidadVentas), promedio(reporte.total, reporte.ventas.length), pesos),
+				fila('Productos', anterior.productos, reporte.productos, String),
+				fila('Kilos', anterior.kg, reporte.kg, kilos),
+				...marcas.map((m) => fila(m, totalDe(anterior.marcas, m), totalDe(reporte.marcas, m), pesos)),
+			],
+			[1, 2, 3],
+		);
+	}
+
 	const pagos = reporte.pagos.map((p) => [p.nombre, pesos(p.total)]);
 	if (reporte.sinPago !== 0) pagos.push(['Diferencia sin pago anotado', pesos(reporte.sinPago)]);
 	seccion('Cómo se cobró', ['Medio de pago', 'Importe'], pagos.map((f) => f.map(limpiar)), [1], {
@@ -81,6 +110,96 @@ export function reporteAPdf(reporte: Reporte, emitido = Date.now()): jsPDF {
 		);
 	}
 
+	/** Deja lugar en la hoja para un bloque de `altura` mm. */
+	const lugar = (altura: number) => {
+		if (y + altura > alto - 18) {
+			doc.addPage();
+			y = 18;
+		}
+	};
+
+	/** Barras horizontales de los 8 primeros, con el valor al final de cada una. */
+	const barras = (titulo: string, filas: FilaProducto[], valor: (f: FilaProducto) => number, texto: (f: FilaProducto) => string) => {
+		const primeras = [...filas].sort((a, b) => valor(b) - valor(a)).slice(0, 8);
+		if (!primeras.length) return;
+		lugar(primeras.length * 7 + 8);
+		doc.setFont('helvetica', 'bold').setFontSize(12).setTextColor(20).text(titulo, MARGEN, y);
+		y += 3;
+		const izquierda = MARGEN + 62;
+		const largo = ancho - MARGEN - izquierda - 34;
+		const maximo = Math.max(...primeras.map(valor)) || 1;
+		doc.setFont('helvetica', 'normal').setFontSize(9);
+		for (const f of primeras) {
+			const nombre = doc.splitTextToSize(limpiar(`${f.nombre} (${f.marca})`), 59) as string[];
+			doc.setTextColor(20).text(nombre.length > 1 ? `${nombre[0]}…` : nombre[0]!, izquierda - 2, y + 3.8, { align: 'right' });
+			const w = Math.max(0.8, (valor(f) / maximo) * largo);
+			doc.setFillColor(...ROSA).rect(izquierda, y + 0.8, w, 4.4, 'F');
+			doc.text(limpiar(texto(f)), izquierda + w + 2, y + 3.8);
+			y += 7;
+		}
+		doc.setDrawColor(160).setLineWidth(0.2).line(izquierda, y - primeras.length * 7, izquierda, y);
+		y += 9;
+	};
+
+	barras('Productos más vendidos (veces vendido)', reporte.porProducto, (f) => f.productos, (f) => `${f.productos}${f.kg ? ` · ${kilos(f.kg)}` : ''}`);
+	barras('Productos que más plata dejaron', reporte.porProducto, (f) => f.total, (f) => pesos(f.total));
+
+	/** Velas por hora: se leen sin color (hueca = subió, llena = bajó). */
+	const graficoVelas = () => {
+		const velas = reporte.porHora;
+		if (!velas.length) return;
+		lugar(88);
+		doc.setFont('helvetica', 'bold').setFontSize(12).setTextColor(20).text('Velas por hora (importe de cada venta)', MARGEN, y);
+		doc.setFont('helvetica', 'normal').setFontSize(8).setTextColor(90);
+		doc.text('Mecha: de la venta más chica a la más grande de la hora. Cuerpo: entre la primera y la última venta.', MARGEN, y + 4.5);
+		doc.setDrawColor(...PETROLEO).setLineWidth(0.4).rect(MARGEN, y + 7, 3, 3, 'S');
+		doc.text('La última fue igual o mayor que la primera', MARGEN + 5, y + 9.5);
+		doc.setFillColor(...ROSA).rect(MARGEN + 80, y + 7, 3, 3, 'F');
+		doc.text('La última fue menor', MARGEN + 85, y + 9.5);
+
+		const arriba = y + 15;
+		const base = arriba + 55;
+		const izquierda = MARGEN + 24;
+		// Tope "redondo" para que las líneas de referencia tengan números limpios.
+		const mayor = Math.max(...velas.map((v) => v.mayor)) || 1;
+		const escala = 10 ** Math.floor(Math.log10(mayor));
+		const tope = [1, 2, 2.5, 5, 10].map((n) => n * escala).find((n) => n >= mayor)!;
+		const altura = (n: number) => base - (n / tope) * (base - arriba);
+		for (let i = 0; i <= 4; i++) {
+			const n = (tope / 4) * i;
+			doc.setDrawColor(215).setLineWidth(0.15).line(izquierda, altura(n), ancho - MARGEN, altura(n));
+			doc.text(limpiar(pesos(n).replace(/,00$/, '')), izquierda - 2, altura(n) + 1, { align: 'right' });
+		}
+		// Las horas sin ventas dejan su lugar vacío.
+		const desde = velas[0]!.hora;
+		const columnas = velas.at(-1)!.hora - desde + 1;
+		const paso = (ancho - MARGEN - izquierda) / columnas;
+		const grosor = Math.min(6, paso * 0.6);
+		for (let i = 0; i < columnas; i++) {
+			doc.text(`${desde + i} h`, izquierda + paso * (i + 0.5), base + 4, { align: 'center' });
+		}
+		for (const v of velas) {
+			const x = izquierda + paso * (v.hora - desde + 0.5);
+			const sube = v.ultima >= v.primera;
+			const color = sube ? PETROLEO : ROSA;
+			const cima = altura(Math.max(v.primera, v.ultima));
+			const cuerpo = Math.max(0.6, altura(Math.min(v.primera, v.ultima)) - cima);
+			doc.setDrawColor(...color).setLineWidth(0.4).line(x, altura(v.mayor), x, altura(v.menor));
+			doc.setFillColor(sube ? '#ffffff' : '#e81f76').rect(x - grosor / 2, cima, grosor, cuerpo, 'FD');
+		}
+		y = base + 11;
+	};
+	graficoVelas();
+
+	seccion(
+		'Ventas por hora',
+		['Hora', 'Ventas', 'Primera', 'Mayor', 'Menor', 'Última', 'Total'],
+		reporte.porHora.map((v) =>
+			[`${v.hora} h`, String(v.ventas), pesos(v.primera), pesos(v.mayor), pesos(v.menor), pesos(v.ultima), pesos(v.total)].map(limpiar),
+		),
+		[1, 2, 3, 4, 5, 6],
+	);
+
 	seccion(
 		'Por marca',
 		['Marca', 'Productos', 'Kilos', 'Importe'],
@@ -95,28 +214,53 @@ export function reporteAPdf(reporte: Reporte, emitido = Date.now()): jsPDF {
 		[2, 3, 4],
 	);
 
-	seccion(
-		'Detalle de cada venta',
-		['Hora', 'Cliente', 'Productos', 'Pago', 'Total'],
-		reporte.ventas.map((venta) =>
-			[
-				hora(venta.finalizada ?? venta.creada),
-				venta.cliente || '-',
-				venta.productos
-					.map((p) => {
-						const peso = p.pesoKg == null ? '' : ` ${kilos(p.pesoKg)}`;
-						return limpiar(`${p.producto} (${marcaPorId(p.marca)?.nombre ?? p.marca})${peso}: ${pesos(p.total)}`);
-					})
-					.join('\n'),
-				(venta.pagos ?? [])
-					.map((p) => limpiar(`${nombreMetodo(p.metodo)} ${pesos(p.monto)}${p.momento ? ` (cobrado ${diaYHora(p.momento)})` : ''}`))
-					.join('\n'),
-				pesos(venta.productos.reduce((s, p) => s + p.total, 0)),
-			].map((celda) => celda.split('\n').map(limpiar).join('\n')),
-		),
-		[4],
-		{ columnStyles: { 0: { cellWidth: 13 }, 1: { cellWidth: 26 }, 3: { cellWidth: 52 }, 4: { cellWidth: 25 } } },
-	);
+	// Una tabla por venta: qué se llevó y, debajo, cómo la pagó.
+	lugar(40);
+	doc.setFont('helvetica', 'bold').setFontSize(12).setTextColor(20).text('Detalle de cada venta', MARGEN, y);
+	y += 3;
+	reporte.ventas.forEach((venta, i) => {
+		const total = venta.productos.reduce((s, p) => s + Math.round(p.total * 100), 0) / 100;
+		const titulo = `Venta ${i + 1} · ${hora(venta.finalizada ?? venta.creada)}${venta.cliente ? ` · ${venta.cliente}` : ''}`;
+		const pagado = (venta.pagos ?? []).map((p) => {
+			if (p.metodo === 'debe') return `Quedó debiendo ${pesos(p.monto)}`;
+			return `${nombreMetodo(p.metodo)} ${pesos(p.monto)}${p.momento ? ` (cobrado ${diaYHora(p.momento)})` : ''}`;
+		});
+		const nota = venta.nota ? `\nNota: ${limpiar(venta.nota)}` : '';
+		autoTable(doc, {
+			startY: y,
+			margin: { left: MARGEN, right: MARGEN, bottom: 18, top: 18 },
+			pageBreak: 'avoid',
+			rowPageBreak: 'avoid',
+			theme: 'grid',
+			styles: { fontSize: 9, cellPadding: 1.4, textColor: 20, lineColor: 200 },
+			headStyles: { fillColor: 235, textColor: 20, fontStyle: 'bold' },
+			footStyles: { fillColor: 255, textColor: 20, fontStyle: 'bold' },
+			// Los encabezados de las columnas con números, alineados como los números.
+			didParseCell: (celda) => {
+				if (celda.section === 'head' && celda.row.index === 1 && celda.column.index >= 2) celda.cell.styles.halign = 'right';
+			},
+			showFoot: 'lastPage',
+			columnStyles: { 1: { cellWidth: 30 }, 2: { cellWidth: 24, halign: 'right' }, 3: { cellWidth: 28, halign: 'right' }, 4: { cellWidth: 30, halign: 'right' } },
+			head: [
+				[
+					{ content: limpiar(titulo), colSpan: 4 },
+					{ content: limpiar(pesos(total)), styles: { halign: 'right' } },
+				],
+				['Producto', 'Marca', 'Peso', 'Precio por kg', 'Importe'],
+			],
+			body: venta.productos.map((p) =>
+				[
+					p.producto,
+					marcaPorId(p.marca)?.nombre ?? p.marca,
+					p.pesoKg == null ? '-' : kilos(p.pesoKg),
+					p.precioKg == null ? '-' : pesos(p.precioKg),
+					pesos(p.total),
+				].map(limpiar),
+			),
+			foot: [[{ content: `Cómo pagó: ${pagado.length ? pagado.map(limpiar).join(' + ') : 'sin pago anotado'}${nota}`, colSpan: 5 }]],
+		});
+		y = (doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 4;
+	});
 
 	const paginas = doc.getNumberOfPages();
 	for (let pagina = 1; pagina <= paginas; pagina++) {

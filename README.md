@@ -15,7 +15,7 @@ Se usa desde el celular, en el puesto, muchas veces sin señal. Por eso es una *
 - **Varias marcas**: en el puesto venden Huella Pampa, Oliverio, Mamá Mecha y Milkey, cada una con su balanza y su formato de ticket. Cada venta se anota con su marca.
 - **Hora argentina (UTC-3)**: cada venta queda anotada con su hora, y los días se cortan a la medianoche de Argentina aunque el celular tenga otra zona.
 - **Lista de ventas** de hoy aparte de la de días anteriores, con el total del día y por marca. Se pueden editar, y borrar con opción de deshacer.
-- **Reporte en PDF** de un día, para mandar por WhatsApp e imprimir: total, cómo se cobró, quiénes quedaron debiendo, totales por marca y por producto, y el detalle de cada venta. El botón **Compartir PDF** está en *Ventas del día* y en la pestaña **Anteriores**, que lista los días pasados, cada uno tiene el suyo. El PDF se arma en el celular, sin conexión; si el navegador no puede compartir archivos, se descarga.
+- **Reporte en PDF** de un día, para mandar por WhatsApp e imprimir: total, comparación con la feria anterior, cómo se cobró, quiénes quedaron debiendo, gráficos de los productos más vendidos y de velas por hora, totales por marca y por producto, y cada venta con lo que se llevaron y cómo la pagaron. El botón **Compartir PDF** está en *Ventas del día* y en la pestaña **Anteriores**, que lista los días pasados, cada uno tiene el suyo. El PDF se arma en el celular, sin conexión; si el navegador no puede compartir archivos, se descarga.
 
 ## Tecnologías
 
