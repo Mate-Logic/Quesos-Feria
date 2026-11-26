@@ -11,6 +11,14 @@ export interface ProductoVenta {
 	precioKg: number | null;
 	total: number;
 	origen: 'ticket' | 'manual';
+	/** Producto del catálogo, para reconocer las promociones. */
+	productoId?: string;
+	/** Solo en lo que se vende por unidad. */
+	cantidad?: number;
+	precioUnidad?: number;
+	/** Rebaja por promoción, ya restada de `total`. */
+	descuento?: number;
+	promo?: string;
 	/** Foto recortada del ticket, si el producto salió de un ticket. */
 	miniatura?: Blob | null;
 }

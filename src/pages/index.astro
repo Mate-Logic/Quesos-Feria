@@ -4,6 +4,8 @@ import Splash from '../components/Splash.astro';
 import Camara from '../components/Camara.astro';
 import Revision from '../components/Revision.astro';
 import Cobro from '../components/Cobro.astro';
+import Codigo from '../components/Codigo.astro';
+import Producto from '../components/Producto.astro';
 import { ruta } from '../lib/rutas';
 ---
 
@@ -50,6 +52,11 @@ import { ruta } from '../lib/rutas';
 			<!-- Respaldo de la cámara si el navegador no deja usarla dentro de la app. -->
 			<input id="input-camara-sistema" type="file" accept="image/*" capture="environment" hidden />
 
+			<button id="btn-codigo" class="accion secundaria" type="button" aria-label="Escanear código de barras">
+				<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6v12M7 6v12M11 6v12M13 6v12M17 6v12M20 6v12"></path></svg>
+				<span>Código</span>
+			</button>
+
 			<button id="btn-manual" class="accion secundaria" type="button">
 				<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4"></path></svg>
 				<span>A mano</span>
@@ -88,6 +95,19 @@ import { ruta } from '../lib/rutas';
 			<h1 class="anteriores-titulo">Días anteriores</h1>
 			<div id="lista-anteriores" class="lista anteriores"></div>
 		</div>
+
+		<div id="panel-productos" class="panel panel-lista" role="tabpanel" aria-labelledby="pestana-productos" hidden>
+			<h1 class="anteriores-titulo">Productos</h1>
+			<div id="catalogo-filtros" class="filtros" aria-label="Marca"></div>
+			<ul id="catalogo-lista" class="catalogo-lista"></ul>
+			<button id="catalogo-nuevo" class="catalogo-nuevo" type="button">+ Nuevo producto</button>
+		</div>
+
+		<div id="panel-promos" class="panel panel-lista" role="tabpanel" aria-labelledby="pestana-promos" hidden>
+			<h1 class="anteriores-titulo">Promociones</h1>
+			<ul id="promos-lista" class="catalogo-lista"></ul>
+			<button id="promo-nueva" class="catalogo-nuevo" type="button">+ Nueva promo</button>
+		</div>
 	</main>
 
 	<nav class="pestanas" role="tablist" aria-label="Secciones">
@@ -98,12 +118,20 @@ import { ruta } from '../lib/rutas';
 		</button>
 		<button id="pestana-dia" class="pestana" type="button" role="tab" aria-controls="panel-dia" aria-selected="false">
 			<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"></rect><path d="M4 10h16M9 3v4M15 3v4"></path></svg>
-			<span>Ventas del día</span>
+			<span>Del día</span>
 			<span id="contador-dia" class="contador" hidden></span>
 		</button>
 		<button id="pestana-anteriores" class="pestana" type="button" role="tab" aria-controls="panel-anteriores" aria-selected="false">
 			<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"></circle><path d="M12 8v4l3 2"></path></svg>
 			<span>Anteriores</span>
+		</button>
+		<button id="pestana-productos" class="pestana" type="button" role="tab" aria-controls="panel-productos" aria-selected="false">
+			<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8l8-4 8 4v8l-8 4-8-4zM4 8l8 4 8-4M12 12v8"></path></svg>
+			<span>Productos</span>
+		</button>
+		<button id="pestana-promos" class="pestana" type="button" role="tab" aria-controls="panel-promos" aria-selected="false">
+			<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12V4h8l10 10-8 8z"></path><circle cx="8" cy="9" r="1.5"></circle></svg>
+			<span>Promos</span>
 		</button>
 	</nav>
 	</div>
@@ -113,12 +141,18 @@ import { ruta } from '../lib/rutas';
 	<Camara />
 	<Revision />
 	<Cobro />
+	<Producto />
+	<!-- Va último: se abre por encima de las otras hojas. -->
+	<Codigo />
 </Layout>
 
 <script>
 	import { abrirCamara, esCelular, hayCamara } from '../lib/ui/camara';
 	import { abrirRevision } from '../lib/ui/revision';
 	import { abrirCobro } from '../lib/ui/cobro';
+	import { aplicarPromos, leerCatalogo, porCodigo, sumarProducto, type ItemCatalogo } from '../lib/catalogo';
+	import { leerCodigo } from '../lib/ui/codigo';
+	import { asociarCodigo, dibujarCatalogo } from '../lib/ui/productos';
 	import { deuda, estadoCobro, telefonoValido } from '../lib/pagos';
 	import { hora } from '../lib/formato';
 	import {
@@ -165,6 +199,8 @@ import { ruta } from '../lib/rutas';
 		vender: { boton: document.getElementById('pestana-vender')!, panel: document.getElementById('panel-vender')! },
 		dia: { boton: document.getElementById('pestana-dia')!, panel: document.getElementById('panel-dia')! },
 		anteriores: { boton: document.getElementById('pestana-anteriores')!, panel: document.getElementById('panel-anteriores')! },
+		productos: { boton: document.getElementById('pestana-productos')!, panel: document.getElementById('panel-productos')! },
+		promos: { boton: document.getElementById('pestana-promos')!, panel: document.getElementById('panel-promos')! },
 	};
 	type Pestana = keyof typeof PESTANAS;
 	const PESTANA_GUARDADA = 'pestana';
@@ -179,6 +215,7 @@ import { ruta } from '../lib/rutas';
 		sessionStorage.setItem(PESTANA_GUARDADA, nombre);
 		contenido.scrollTop = 0;
 		if (nombre === 'vender') centrarVentaActiva();
+		if (nombre === 'productos' || nombre === 'promos') dibujarCatalogo();
 	}
 
 	for (const [clave, { boton }] of Object.entries(PESTANAS)) {
@@ -278,7 +315,7 @@ import { ruta } from '../lib/rutas';
 	async function guardarProducto(producto: ProductoVenta, destinoId: string | null) {
 		if (destinoId) {
 			const existente = await actualizarVenta(destinoId, (actual) =>
-				actual.estado === 'abierta' ? { ...actual, productos: [...actual.productos, producto] } : null,
+				actual.estado === 'abierta' ? { ...actual, productos: conPromos(sumarProducto(actual.productos, producto)) } : null,
 			);
 			if (!existente || existente.estado !== 'abierta') {
 				avisar('Esa venta ya no está abierta. Elegí otra venta para agregar el producto.');
@@ -296,10 +333,56 @@ import { ruta } from '../lib/rutas';
 			creada: Date.now(),
 			cliente: '',
 			estado: 'abierta',
-			productos: [producto],
+			productos: conPromos([producto]),
 		};
 		ventaActivaId = nueva.id;
 		await guardar(nueva, 'Producto agregado a una nueva venta abierta', producto.marca);
+	}
+
+	const conPromos = (items: ProductoVenta[]) => aplicarPromos(items, leerCatalogo().promos);
+
+	/** Los productos conocidos de ventas anteriores, con los precios por kilo del catálogo por delante. */
+	function conocidos() {
+		const delCatalogo = leerCatalogo()
+			.productos.filter((p) => p.tipo === 'kg' && p.activo !== false)
+			.map((p) => ({ nombre: p.nombre, precioKg: p.precio ?? undefined }));
+		const nombres = new Set(delCatalogo.map((p) => p.nombre.toLowerCase()));
+		return [
+			...delCatalogo,
+			...productos.filter((p) => !nombres.has(p.nombre.toLowerCase())).map((p) => ({ nombre: p.nombre, precioKg: p.precioKg ?? undefined })),
+		];
+	}
+
+	/** Lee un código y suma una unidad a la venta que se ve. */
+	async function agregarPorCodigo() {
+		const destino = ventaActiva();
+		const codigo = await leerCodigo();
+		if (!codigo) return;
+		const item: ItemCatalogo | null = porCodigo(leerCatalogo(), codigo) ?? (await asociarCodigo(codigo));
+		if (!item) return;
+		if (item.precio == null) {
+			avisar(`${item.nombre} no tiene precio: cargalo en Productos.`);
+			return;
+		}
+		await guardarProducto(
+			{
+				id: nuevoId(),
+				marca: item.marca,
+				producto: item.nombre,
+				productoId: item.id,
+				cantidad: 1,
+				precioUnidad: item.precio,
+				pesoKg: null,
+				precioKg: null,
+				total: item.precio,
+				origen: 'manual',
+			},
+			destino?.id ?? null,
+		);
+		avisar(`${item.nombre} · ${pesos(item.precio)}`, {
+			texto: 'Otro',
+			alTocar: () => void ejecutar(agregarPorCodigo, 'No se pudo leer el código.'),
+		});
 	}
 
 	async function procesarFoto(foto: Blob | HTMLCanvasElement, desdeCamara: boolean) {
@@ -312,7 +395,7 @@ import { ruta } from '../lib/rutas';
 		});
 		leerFoto(foto, {
 			desdeCamara,
-			conocidos: productos.map((p) => ({ nombre: p.nombre, precioKg: p.precioKg ?? undefined })),
+			conocidos: conocidos(),
 			alAvanzar: control.progreso,
 		})
 			.then(({ lectura, miniatura }) => control.completar(lectura, miniatura))
@@ -486,6 +569,9 @@ import { ruta } from '../lib/rutas';
 		if (archivo) void ejecutar(() => procesarFoto(archivo, false), 'No se pudo agregar el producto. Intentá de nuevo.');
 	});
 
+	document.getElementById('btn-codigo')!.addEventListener('click', () =>
+		void ejecutar(agregarPorCodigo, 'No se pudo agregar el producto. Intentá de nuevo.'),
+	);
 	btnManual.addEventListener('click', () =>
 		void ejecutar(agregarManual, 'No se pudo agregar el producto. Intentá de nuevo.'),
 	);
@@ -577,7 +663,8 @@ import { ruta } from '../lib/rutas';
 		height: 100%;
 	}
 
-	.panel-anteriores:not([hidden]) {
+	.panel-anteriores:not([hidden]),
+	.panel-lista:not([hidden]) {
 		display: flex;
 		flex-direction: column;
 		gap: 0.6rem;
@@ -585,7 +672,8 @@ import { ruta } from '../lib/rutas';
 	}
 
 	.contenido:has(.panel-vender:not([hidden])),
-	.contenido:has(.panel-anteriores:not([hidden])) {
+	.contenido:has(.panel-anteriores:not([hidden])),
+	.contenido:has(.panel-lista:not([hidden])) {
 		overflow: hidden;
 		padding-bottom: 0.6rem;
 	}
@@ -1349,6 +1437,79 @@ import { ruta } from '../lib/rutas';
 		font-size: 0.78rem;
 	}
 
+	.filtros {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 0.4rem;
+	}
+
+	.filtros :global(button),
+	.catalogo-nuevo {
+		min-height: 44px;
+		border: 1.5px solid #d9d9e0;
+		border-radius: 999px;
+		background: #fff;
+		color: var(--texto);
+		font: inherit;
+		font-weight: 700;
+		cursor: pointer;
+	}
+
+	.filtros :global(button[aria-pressed='true']) {
+		border-color: var(--rosa);
+		color: var(--rosa);
+	}
+
+	.catalogo-nuevo {
+		flex: none;
+		min-height: 52px;
+		border: 0;
+		background: var(--degrade);
+		color: #fff;
+	}
+
+	/* La lista toma el espacio que queda y se desplaza solo ella. */
+	.catalogo-lista {
+		flex: 1;
+		min-height: 0;
+		overflow-y: auto;
+		overscroll-behavior: contain;
+		list-style: none;
+		border-radius: var(--radio);
+		background: var(--superficie);
+	}
+
+	.catalogo-lista :global(li + li) {
+		border-top: 1px solid #ececf1;
+	}
+
+	.catalogo-lista :global(button) {
+		width: 100%;
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.75rem;
+		min-height: 56px;
+		padding: 0.4rem 0.9rem;
+		border: 0;
+		background: none;
+		color: var(--texto);
+		font: inherit;
+		font-weight: 600;
+		text-align: left;
+		cursor: pointer;
+	}
+
+	.catalogo-lista :global(small) {
+		display: block;
+		font-weight: 400;
+		color: var(--texto-suave);
+	}
+
+	.catalogo-lista :global(strong) {
+		flex: none;
+	}
+
 	.anteriores-titulo {
 		font-size: 1.15rem;
 	}
@@ -1414,7 +1575,7 @@ import { ruta } from '../lib/rutas';
 	.pestanas {
 		flex: none;
 		display: grid;
-		grid-template-columns: 1fr 1fr 1fr;
+		grid-template-columns: repeat(5, minmax(0, 1fr));
 		padding: 0.35rem 0.5rem max(0.35rem, env(safe-area-inset-bottom));
 		background: rgb(255 255 255 / 0.96);
 		border-top: 1px solid #ececf1;
@@ -1433,7 +1594,7 @@ import { ruta } from '../lib/rutas';
 		background: none;
 		color: var(--texto-suave);
 		font: inherit;
-		font-size: 0.9rem;
+		font-size: 0.72rem;
 		font-weight: 700;
 		cursor: pointer;
 	}

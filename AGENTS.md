@@ -1,9 +1,3 @@
-## ⚠️ Pendiente urgente: avisar al empezar la sesión
-
-Al iniciar cualquier sesión en este repositorio, en cualquier computadora, **lo primero es recordarle al usuario este pendiente**, hasta que se resuelva y se borre esta sección:
-
-- **Catálogo de productos**: falta que el usuario pase la lista completa de productos (nombre, marca, si se vende por kilo o por unidad y precio si lo tiene). El detalle de lo que hay que armar está en el README, sección *Pendiente urgente*.
-
 ## Sobre el proyecto
 
 Aplicación para anotar las ventas de **Lácteos Huella Pampa** (productor de quesos de Chivilcoy) en los puestos de los [Mercados Bonaerenses](https://mi.mda.gba.gob.ar/mercados/bonaerenses/v2/productor/1ecf3c9f-f629-661a-9f05-d15c5b752137), la feria de la Provincia de Buenos Aires. Se usa desde el celular, en el puesto, muchas veces sin señal (ver regla 3).
@@ -135,6 +129,14 @@ La app la usan personas mayores en el puesto, con las manos ocupadas. Tiene que 
 
 - Nadie queda debiendo sin nombre y celular: la venta no se puede confirmar si faltan. Sin característica se asume 2346 (Chivilcoy).
 - Cada deuda tiene botones para escribirle por WhatsApp (mensaje ya redactado, lo envía la persona) y para llamar.
+
+### 11. Productos y promociones: todo se administra desde el celular
+
+- Precios, productos y promociones cambian: nada se fija en el código. `src/data/productos.json` es solo la carga inicial.
+- En el celular se guarda únicamente lo cambiado o agregado (`src/lib/catalogo.ts`), así una actualización no pisa lo del puesto.
+- Las promociones activas se aplican solas, y el descuento queda restado del total de cada producto.
+- Lo envasado (sachets, dulce de leche) se vende por unidad y puede cargarse con código de barras. Los quesos, por kilo, con el ticket o a mano.
+- La foto del cartel de precios no se commitea: el repo es público y se ve una persona.
 
 ## Development
 

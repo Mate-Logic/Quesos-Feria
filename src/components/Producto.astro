@@ -1,0 +1,185 @@
+---
+// Hojas de la sección Productos: editar un producto, una promoción o decir a qué
+// producto corresponde un código nuevo. Se controlan desde src/lib/ui/productos.ts.
+import { MARCAS } from '../lib/marcas';
+---
+
+<dialog id="producto" class="hoja" aria-labelledby="producto-titulo">
+	<form method="dialog" novalidate>
+		<h2 id="producto-titulo">Producto</h2>
+		<label>Nombre <input name="nombre" type="text" autocomplete="off" /></label>
+		<label>Marca
+			<select name="marca">{MARCAS.map((m) => <option value={m.id}>{m.nombre}</option>)}</select>
+		</label>
+		<div class="fila">
+			<label>Se vende
+				<select name="tipo"><option value="kg">Por kilo</option><option value="unidad">Por unidad</option></select>
+			</label>
+			<label>Precio $ <input name="precio" type="text" inputmode="decimal" autocomplete="off" /></label>
+		</div>
+		<label data-solo="unidad">Código de barras
+			<span class="con-boton">
+				<input name="codigo" type="text" inputmode="numeric" autocomplete="off" />
+				<button type="button" data-escanear>Escanear</button>
+			</span>
+		</label>
+		<label class="marcar"><input name="activo" type="checkbox" /> Se ofrece a la venta</label>
+		<p class="error" role="alert" hidden></p>
+		<button type="button" class="borrar" data-borrar>Borrar producto</button>
+		<footer><button type="button" data-cancelar>Cancelar</button><button class="primario" type="submit">Guardar</button></footer>
+	</form>
+</dialog>
+
+<dialog id="promo" class="hoja" aria-labelledby="promo-titulo">
+	<form method="dialog" novalidate>
+		<h2 id="promo-titulo">Promoción</h2>
+		<label>Nombre <input name="nombre" type="text" autocomplete="off" /></label>
+		{[1, 2].map((n) => (
+			<div class="fila cantidad">
+				<label>{n === 1 ? 'Llevando' : 'Y además'} <select name={`producto${n}`}></select></label>
+				<label>Cuántos <input name={`cantidad${n}`} type="text" inputmode="numeric" autocomplete="off" /></label>
+			</div>
+		))}
+		<label>Se paga en total $ <input name="precio" type="text" inputmode="decimal" autocomplete="off" /></label>
+		<label class="marcar"><input name="activa" type="checkbox" /> Promoción activa</label>
+		<p class="error" role="alert" hidden></p>
+		<button type="button" class="borrar" data-borrar>Borrar promoción</button>
+		<footer><button type="button" data-cancelar>Cancelar</button><button class="primario" type="submit">Guardar</button></footer>
+	</form>
+</dialog>
+
+<dialog id="elegir" class="hoja" aria-labelledby="elegir-titulo">
+	<form method="dialog">
+		<h2 id="elegir-titulo">¿Qué producto es?</h2>
+		<p id="elegir-codigo"></p>
+		<ul id="elegir-lista"></ul>
+		<footer><button type="button" data-cancelar>Cancelar</button><button class="primario" type="button" data-nuevo>Producto nuevo</button></footer>
+	</form>
+</dialog>
+
+<style>
+	.hoja {
+		width: 100%;
+		max-width: 520px;
+		max-height: 100dvh;
+		margin: auto auto 0;
+		padding: 0;
+		border: 0;
+		border-radius: 20px 20px 0 0;
+		background: var(--superficie);
+		color: var(--texto);
+	}
+
+	.hoja::backdrop {
+		background: rgb(15 15 25 / 0.55);
+	}
+
+	form {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+		padding: 0.8rem 1rem max(0.8rem, env(safe-area-inset-bottom));
+	}
+
+	h2 {
+		font-size: 1.2rem;
+	}
+
+	label {
+		display: grid;
+		gap: 0.15rem;
+		min-width: 0;
+		font-size: 0.85rem;
+		font-weight: 600;
+		color: var(--texto-suave);
+	}
+
+	input:not([type='checkbox']),
+	select {
+		width: 100%;
+		min-width: 0;
+		min-height: 44px;
+		padding: 0.3rem 0.6rem;
+		border: 1.5px solid #d9d9e0;
+		border-radius: 12px;
+		background: #fff;
+		color: var(--texto);
+		font: inherit;
+		font-size: 1.05rem;
+	}
+
+	.fila {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 0.5rem;
+	}
+
+	.cantidad {
+		grid-template-columns: 1fr 5.5rem;
+	}
+
+	.con-boton {
+		display: flex;
+		gap: 0.4rem;
+	}
+
+	.marcar {
+		display: flex;
+		align-items: center;
+		gap: 0.6rem;
+		min-height: 44px;
+		font-size: 1rem;
+	}
+
+	.marcar input {
+		width: 26px;
+		height: 26px;
+	}
+
+	.error {
+		color: #b3125a;
+		font-weight: 600;
+	}
+
+	footer {
+		display: grid;
+		grid-template-columns: 1fr 1.4fr;
+		gap: 0.5rem;
+	}
+
+	button {
+		min-height: 48px;
+		padding: 0 0.9rem;
+		border: 0;
+		border-radius: 999px;
+		background: #efeef3;
+		color: var(--texto);
+		font: inherit;
+		font-weight: 700;
+		cursor: pointer;
+	}
+
+	.borrar {
+		background: none;
+		color: #b3125a;
+		text-decoration: underline;
+	}
+
+	.primario {
+		background: var(--degrade);
+		color: #fff;
+	}
+
+	/* La lista se desplaza dentro de la hoja; la pantalla queda quieta. */
+	#elegir-lista {
+		list-style: none;
+		max-height: 50dvh;
+		overflow-y: auto;
+	}
+
+	#elegir-lista :global(button) {
+		width: 100%;
+		margin-bottom: 0.35rem;
+		text-align: left;
+	}
+</style>

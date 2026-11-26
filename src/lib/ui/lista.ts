@@ -232,7 +232,7 @@ function tarjetaVentaAbierta(venta: Venta, acciones: AccionesVentasAbiertas): HT
 		const filas = [...venta.productos].reverse().map((item) => {
 			const li = document.createElement('li');
 			const detalle = document.createElement('span');
-			detalle.textContent = `${item.producto}${item.pesoKg != null ? ` · ${kilos(item.pesoKg)}` : ''}`;
+			detalle.textContent = `${item.cantidad != null ? `${item.cantidad} × ` : ''}${item.producto}${item.pesoKg != null ? ` · ${kilos(item.pesoKg)}` : ''}${item.descuento ? ` · Promo −${pesos(item.descuento)}` : ''}`;
 			const total = document.createElement('strong');
 			total.textContent = pesos(item.total);
 			li.append(detalle, total);
@@ -400,6 +400,8 @@ function itemVenta(venta: Venta, acciones: AccionesLista): HTMLLIElement {
 			if (producto.pesoKg != null) {
 				partes.push(producto.precioKg != null ? `${kilos(producto.pesoKg)} × ${pesos(producto.precioKg)}` : kilos(producto.pesoKg));
 			}
+			if (producto.cantidad != null && producto.precioUnidad != null) partes.push(`${producto.cantidad} × ${pesos(producto.precioUnidad)}`);
+			if (producto.descuento) partes.push(`Promo −${pesos(producto.descuento)}`);
 			subtitulo.textContent = partes.join(' · ');
 			const precio = document.createElement('strong');
 			precio.textContent = pesos(producto.total);

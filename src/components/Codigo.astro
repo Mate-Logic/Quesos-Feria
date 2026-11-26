@@ -1,0 +1,76 @@
+---
+// Lector de códigos de barras con la cámara. Se controla desde src/lib/ui/codigo.ts.
+---
+
+<dialog id="codigo" class="codigo" aria-labelledby="codigo-titulo">
+	<h2 id="codigo-titulo">Apuntá al código de barras</h2>
+	<div class="visor">
+		<video id="codigo-video" playsinline muted></video>
+		<span class="guia" aria-hidden="true"></span>
+	</div>
+	<p id="codigo-estado" role="status"></p>
+	<button id="codigo-cerrar" type="button">Cancelar</button>
+</dialog>
+
+<style>
+	.codigo {
+		width: 100%;
+		max-width: 100%;
+		height: 100dvh;
+		max-height: 100dvh;
+		margin: 0;
+		padding: 1rem;
+		border: 0;
+		background: #111;
+		color: #fff;
+		overflow: hidden;
+	}
+
+	.codigo[open] {
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
+	}
+
+	h2 {
+		font-size: 1.2rem;
+		text-align: center;
+	}
+
+	.visor {
+		position: relative;
+		flex: 1;
+		min-height: 0;
+		overflow: hidden;
+		border-radius: 16px;
+	}
+
+	video {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+	}
+
+	.guia {
+		position: absolute;
+		inset: 35% 8%;
+		border: 3px solid #fff;
+		border-radius: 12px;
+	}
+
+	p {
+		text-align: center;
+		min-height: 1.5em;
+	}
+
+	button {
+		min-height: 56px;
+		border: 0;
+		border-radius: 999px;
+		background: #fff;
+		color: #111;
+		font: inherit;
+		font-size: 1.1rem;
+		font-weight: 700;
+	}
+</style>

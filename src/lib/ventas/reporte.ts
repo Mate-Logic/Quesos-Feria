@@ -115,7 +115,7 @@ function resumirDia(todas: Venta[], inicio: number): Omit<Reporte, 'anterior'> {
 	const marcas = new Map<string, FilaMarca>();
 	const porProducto = new Map<string, FilaProducto>();
 	const acumular = (fila: FilaMarca, item: (typeof items)[number]) => {
-		fila.productos += 1;
+		fila.productos += item.cantidad ?? 1;
 		fila.kg = sumarKg([fila.kg, item.pesoKg ?? 0]);
 		fila.total = sumar([fila.total, item.total]);
 	};
@@ -135,7 +135,7 @@ function resumirDia(todas: Venta[], inicio: number): Omit<Reporte, 'anterior'> {
 		dia: inicio,
 		ventas,
 		total,
-		productos: items.length,
+		productos: items.reduce((s, p) => s + (p.cantidad ?? 1), 0),
 		kg: sumarKg(items.map((p) => p.pesoKg ?? 0)),
 		marcas: [...marcas.values()].sort((a, b) => b.total - a.total),
 		porProducto: [...porProducto.values()].sort((a, b) => b.total - a.total),

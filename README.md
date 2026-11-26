@@ -13,6 +13,8 @@ Se usa desde el celular, en el puesto, muchas veces sin señal. Por eso es una *
 - **Escanear ticket**: en el celular se abre la cámara con un recuadro para encuadrar la etiqueta de la balanza. También se puede elegir una foto de la galería (en la PC, solo esa opción).
 - **Lectura sin conexión**: el OCR ([Tesseract.js](https://github.com/naptha/tesseract.js)) corre en el celular. Lee producto, peso, precio por kilo y total, y muestra todo para revisarlo antes de guardar.
 - **Varias marcas**: en el puesto venden Huella Pampa, Oliverio, Mamá Mecha y Milkey, cada una con su balanza y su formato de ticket. Cada venta se anota con su marca.
+- **Productos y promos**: cada uno tiene su pestaña para crear, editar, apagar o borrar desde el celular, sin conexión. Se venden por kilo o por unidad, y las promociones se descuentan solas. La carga inicial está en `src/data/productos.json`; quedan por confirmar el precio del Cremoso, si la ricota es por kilo y el precio del yogur.
+- **Código de barras**: el botón **Código** suma lo envasado a la venta. La primera vez que se lee un código pregunta qué producto es.
 - **Deudas**: para dejar algo debiendo hay que anotar nombre y celular. Después se le puede escribir por WhatsApp con el mensaje ya armado, o llamar.
 - **Hora argentina (UTC-3)**: cada venta queda anotada con su hora, y los días se cortan a la medianoche de Argentina aunque el celular tenga otra zona.
 - **Lista de ventas** de hoy aparte de la de días anteriores, con el total del día y por marca. Se pueden editar, y borrar con opción de deshacer.
@@ -146,14 +148,6 @@ Cuando se agrega un recurso nuevo, hay que verificar que quede cubierto por la c
 - **Tipografía**: Encode Sans, la misma que usa Mercados Bonaerenses.
 - **Logos**: el de Huella Pampa salió de su Instagram y solo está en 150×150 px, y el de Mamá Mecha se recortó de un cartel de su web (92×92 px); hay que reemplazarlos cuando haya versiones en alta resolución.
 - **Íconos de la app**: la bolsa de Mercados Bonaerenses sobre el degradé.
-
-## Pendiente urgente
-
-- [ ] **Catálogo de productos.** Falta la lista completa de productos (la pasa el productor). Con ella se arma:
-  - Un JSON inicial (`src/data/productos.json`) con los productos y algunos precios ya cargados, como punto de partida.
-  - Precios editables y productos nuevos desde la app, guardados en el celular y sin conexión, sin que una actualización del JSON pise lo que se ajustó en el puesto.
-  - Productos que se venden **por kilo** (quesos) o **por unidad** (por ejemplo, la leche en sachet): al cargar a mano se elige el producto y se completan la marca y el precio, con el peso o la cantidad.
-  - Una sección "Productos" para agregarlos y editarlos, sin desplazamiento vertical (páginas que se pasan deslizando o filtro por marca).
 
 ## Ideas a futuro
 

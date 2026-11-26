@@ -56,7 +56,7 @@ export default defineConfig({
 			maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
 			generateSW: {
 				// Precachea todo lo que genera el build para que la app funcione sin conexión.
-				globPatterns: ['**/*.{html,js,css,png,jpg,jpeg,webp,svg,ico,woff2,traineddata}'],
+				globPatterns: ['**/*.{html,js,css,png,jpg,jpeg,webp,svg,ico,woff2,traineddata,wasm}'],
 				// El manifest, sus íconos y los `includeAssets` los agrega el plugin solo.
 				globIgnores: ['pwa-*.png', 'maskable-icon-*.png', 'apple-touch-icon-*.png', 'favicon.ico'],
 				navigateFallback: `${BASE}/404`,

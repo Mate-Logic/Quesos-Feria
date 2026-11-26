@@ -1,5 +1,6 @@
 // Controla la hoja de revisión de productos de src/components/Revision.astro.
 
+import { leerCatalogo, type ItemCatalogo } from '../catalogo';
 import { leerNumero, numeroEditable, pesos } from '../formato';
 import { cierraLaCuenta, formatearNombre, PRODUCTOS_COMUNES, type LecturaTicket } from '../tickets/parser';
 import { nuevoId, type Producto, type ProductoVenta, type Venta } from '../ventas/db';
@@ -57,6 +58,9 @@ export function abrirRevision(datos: DatosRevision): ControlRevision {
 	const peso = form.elements.namedItem('peso') as HTMLInputElement;
 	const precio = form.elements.namedItem('precio') as HTMLInputElement;
 	const total = form.elements.namedItem('total') as HTMLInputElement;
+	const chips = document.getElementById('revision-catalogo')!;
+	const unidadPeso = peso.parentElement!.querySelector('.unidad')!;
+	const catalogo = leerCatalogo().productos.filter((p) => p.activo !== false);
 
 	const { venta, productoVenta, origen, productos } = datos;
 	let miniatura: Blob | null = productoVenta?.miniatura ?? null;
@@ -75,8 +79,12 @@ export function abrirRevision(datos: DatosRevision): ControlRevision {
 		i.removeAttribute('aria-invalid');
 	});
 
+	/** Producto del catálogo que se está cargando; define si va por kilo o por unidad. */
+	let elegido: ItemCatalogo | undefined;
+	const porUnidad = () => elegido?.tipo === 'unidad';
+
 	lista.replaceChildren(
-		...[...new Set([...productos.map((p) => p.nombre), ...PRODUCTOS_COMUNES.map(formatearNombre)])].map(
+		...[...new Set([...catalogo.map((p) => p.nombre), ...productos.map((p) => p.nombre), ...PRODUCTOS_COMUNES.map(formatearNombre)])].map(
 			(nombre) => new Option(nombre),
 		),
 	);
@@ -86,6 +94,10 @@ export function abrirRevision(datos: DatosRevision): ControlRevision {
 		peso.value = numeroEditable(productoVenta.pesoKg);
 		precio.value = numeroEditable(productoVenta.precioKg);
 		total.value = numeroEditable(productoVenta.total);
+		if (productoVenta.cantidad != null) {
+			peso.value = String(productoVenta.cantidad);
+			precio.value = numeroEditable(productoVenta.precioUnidad);
+		}
 		totalAMano = true;
 		for (const radio of form.querySelectorAll<HTMLInputElement>('input[name="marca"]')) {
 			radio.checked = radio.value === productoVenta.marca;
@@ -100,6 +112,13 @@ export function abrirRevision(datos: DatosRevision): ControlRevision {
 		}
 	}
 	mostrarFoto(miniatura);
+	elegido = catalogo.find((p) => p.id === productoVenta?.productoId);
+	// Un producto envasado que ya no está en el catálogo se sigue editando por unidad.
+	if (!elegido && productoVenta?.cantidad != null) {
+		elegido = { id: productoVenta.productoId ?? '', marca: productoVenta.marca, nombre: productoVenta.producto, tipo: 'unidad', precio: null };
+	}
+	mostrarModo();
+	dibujarChips();
 
 	const esperandoLectura = origen === 'ticket' && !productoVenta;
 	leyendo.hidden = !esperandoLectura;
@@ -121,7 +140,7 @@ export function abrirRevision(datos: DatosRevision): ControlRevision {
 		const { p, q, t } = valores();
 		cuenta.replaceChildren();
 		delete cuenta.dataset.tipo;
-		if (p == null || q == null) return;
+		if (porUnidad() || p == null || q == null) return;
 		const calculado = Math.round(p * q * 100) / 100;
 		if (t != null && cierraLaCuenta(p, q, t)) {
 			cuenta.dataset.tipo = 'ok';
@@ -164,7 +183,78 @@ export function abrirRevision(datos: DatosRevision): ControlRevision {
 		}
 	}
 
+	function mostrarModo() {
+		const unidad = porUnidad();
+		form.querySelector('[data-etiqueta="peso"]')!.textContent = unidad ? 'Cantidad' : 'Peso';
+		form.querySelector('[data-etiqueta="precio"]')!.textContent = unidad ? 'Precio c/u' : 'Precio por kg';
+		peso.placeholder = unidad ? '1' : '0,000';
+		peso.inputMode = unidad ? 'numeric' : 'decimal';
+		unidadPeso.textContent = unidad ? 'u.' : 'kg';
+	}
+
+	function elegirItem(item: ItemCatalogo) {
+		elegido = item;
+		producto.value = item.nombre;
+		elegirMarca(item.marca);
+		precio.value = numeroEditable(item.precio);
+		peso.value = item.tipo === 'unidad' ? '1' : '';
+		totalAMano = false;
+		total.value = item.tipo === 'unidad' && item.precio != null ? numeroEditable(item.precio) : '';
+		mostrarModo();
+		dibujarChips();
+		actualizarCuenta();
+		// Lo que falta escribir: el precio si no se sabe, o cuánto pesó.
+		if (item.precio == null) precio.focus();
+		else if (item.tipo === 'kg') peso.focus();
+	}
+
+	function dibujarChips() {
+		const marca = (form.elements.namedItem('marca') as RadioNodeList).value;
+		chips.replaceChildren(
+			...catalogo
+				.filter((p) => p.marca === marca)
+				.map((p) => {
+					const b = document.createElement('button');
+					b.type = 'button';
+					b.textContent = p.nombre;
+					b.setAttribute('aria-pressed', String(p.id === elegido?.id));
+					b.addEventListener('click', () => elegirItem(p));
+					return b;
+				}),
+		);
+	}
+
+	const alCambiarMarca = (e: Event) => {
+		if ((e.target as HTMLInputElement).name !== 'marca') return;
+		if (elegido && elegido.marca !== (e.target as HTMLInputElement).value) {
+			elegido = undefined;
+			mostrarModo();
+		}
+		dibujarChips();
+	};
+
 	const alCambiarProducto = () => {
+		const nombre = producto.value.trim().toLowerCase();
+		const marca = (form.elements.namedItem('marca') as RadioNodeList).value;
+		const delCatalogo = catalogo.find((p) => p.nombre.toLowerCase() === nombre && (!marca || p.marca === marca))
+			?? catalogo.find((p) => p.nombre.toLowerCase() === nombre);
+		// El ticket de la balanza es siempre por kilo y sus números mandan.
+		if (delCatalogo && (origen === 'manual' || delCatalogo.tipo === 'kg')) {
+			elegido = delCatalogo;
+			elegirMarca(delCatalogo.marca);
+			if (!precio.value && delCatalogo.precio != null) {
+				precio.value = numeroEditable(delCatalogo.precio);
+				precio.dataset.calculado = '';
+				if (porUnidad() && !peso.value) peso.value = '1';
+				precio.dispatchEvent(new Event('input'));
+			}
+			mostrarModo();
+			dibujarChips();
+			return;
+		}
+		elegido = undefined;
+		mostrarModo();
+		dibujarChips();
 		const conocido = productos.find((p) => p.nombre.toLowerCase() === producto.value.trim().toLowerCase());
 		if (!conocido) return;
 		elegirMarca(conocido.marca);
@@ -189,6 +279,7 @@ export function abrirRevision(datos: DatosRevision): ControlRevision {
 		}
 	}
 
+	form.addEventListener('change', alCambiarMarca);
 	peso.addEventListener('input', alCambiarPesoOPrecio);
 	precio.addEventListener('input', alCambiarPesoOPrecio);
 	total.addEventListener('input', alCambiarTotal);
@@ -219,6 +310,7 @@ export function abrirRevision(datos: DatosRevision): ControlRevision {
 			precio.removeEventListener('input', alCambiarPesoOPrecio);
 			total.removeEventListener('input', alCambiarTotal);
 			producto.removeEventListener('change', alCambiarProducto);
+			form.removeEventListener('change', alCambiarMarca);
 			if (dialogo.open) dialogo.close();
 			if (urlFoto) URL.revokeObjectURL(urlFoto);
 			resolver(v);
@@ -239,7 +331,10 @@ export function abrirRevision(datos: DatosRevision): ControlRevision {
 		if (!marca) problemas.push('elegí la marca');
 		if (!nombre) problemas.push('escribí el producto');
 		if (t == null || t <= 0) problemas.push('falta el total');
-		if (pesoMal) problemas.push('el peso no es un número');
+		const cantidadMal = porUnidad() && (p == null || !Number.isInteger(p) || p < 1);
+		if (cantidadMal) marcarInvalido(peso, true);
+		if (cantidadMal) problemas.push('falta la cantidad');
+		else if (pesoMal) problemas.push('el peso no es un número');
 		if (precioMal) problemas.push('el precio no es un número');
 		if (problemas.length) {
 			error.hidden = false;
@@ -252,9 +347,15 @@ export function abrirRevision(datos: DatosRevision): ControlRevision {
 				id: productoVenta?.id ?? nuevoId(),
 				marca,
 				producto: nombre,
-				pesoKg: p,
-				precioKg: q,
+				pesoKg: porUnidad() ? null : p,
+				precioKg: porUnidad() ? null : q,
 				total: t!,
+				productoId: elegido?.id || undefined,
+				...(porUnidad() ? { cantidad: p!, precioUnidad: q ?? Math.round((t! / p!) * 100) / 100 } : {}),
+				// Si al editar no cambiaron los números, se conserva la promoción.
+				...(productoVenta?.descuento && productoVenta.total === t && productoVenta.cantidad === p
+					? { descuento: productoVenta.descuento, promo: productoVenta.promo }
+					: {}),
 				origen,
 				miniatura,
 			},

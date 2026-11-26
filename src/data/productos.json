@@ -1,0 +1,141 @@
+{
+	"productos": [
+		{
+			"id": "cremoso",
+			"marca": "huella-pampa",
+			"nombre": "Cremoso",
+			"tipo": "kg",
+			"precio": 8100,
+			"revisar": true
+		},
+		{
+			"id": "port-salut",
+			"marca": "huella-pampa",
+			"nombre": "Port Salut",
+			"tipo": "kg",
+			"precio": 8650
+		},
+		{
+			"id": "port-salut-sin-sal",
+			"marca": "huella-pampa",
+			"nombre": "Port Salut sin sal",
+			"tipo": "kg",
+			"precio": 8915
+		},
+		{
+			"id": "barra",
+			"marca": "huella-pampa",
+			"nombre": "Barra",
+			"tipo": "kg",
+			"precio": 10275
+		},
+		{
+			"id": "muzzarella",
+			"marca": "huella-pampa",
+			"nombre": "Muzzarella",
+			"tipo": "kg",
+			"precio": 8375
+		},
+		{
+			"id": "sardo",
+			"marca": "oliverio",
+			"nombre": "Sardo",
+			"tipo": "kg",
+			"precio": 16950
+		},
+		{
+			"id": "pategras",
+			"marca": "oliverio",
+			"nombre": "Pategrás",
+			"tipo": "kg",
+			"precio": 17775
+		},
+		{
+			"id": "ricota",
+			"marca": "oliverio",
+			"nombre": "Ricota",
+			"tipo": "kg",
+			"precio": 4700,
+			"revisar": true
+		},
+		{
+			"id": "leche",
+			"marca": "mama-mecha",
+			"nombre": "Leche sachet 1 L",
+			"tipo": "unidad",
+			"precio": 1400
+		},
+		{
+			"id": "chocolatada",
+			"marca": "mama-mecha",
+			"nombre": "Leche chocolatada 1 L",
+			"tipo": "unidad",
+			"precio": 2500
+		},
+		{
+			"id": "yogur",
+			"marca": "mama-mecha",
+			"nombre": "Yogur",
+			"tipo": "unidad",
+			"precio": null
+		},
+		{
+			"id": "dulce-familiar-400",
+			"marca": "milkey",
+			"nombre": "Dulce de leche familiar 400 g",
+			"tipo": "unidad",
+			"precio": 1900
+		},
+		{
+			"id": "dulce-familiar-1kg",
+			"marca": "milkey",
+			"nombre": "Dulce de leche familiar 1 kg",
+			"tipo": "unidad",
+			"precio": 3900
+		},
+		{
+			"id": "dulce-repostero-400",
+			"marca": "milkey",
+			"nombre": "Dulce de leche repostero 400 g",
+			"tipo": "unidad",
+			"precio": 1900
+		},
+		{
+			"id": "dulce-repostero-1kg",
+			"marca": "milkey",
+			"nombre": "Dulce de leche repostero 1 kg",
+			"tipo": "unidad",
+			"precio": 3900
+		}
+	],
+	"promos": [
+		{
+			"id": "promo-3-leches",
+			"nombre": "3 sachets de leche",
+			"items": [
+				{
+					"productoId": "leche",
+					"cantidad": 3
+				}
+			],
+			"precio": 3600,
+			"activa": true
+		},
+		{
+			"id": "promo-leche-yogur",
+			"nombre": "Leche + yogur",
+			"items": [
+				{
+					"productoId": "leche",
+					"cantidad": 1
+				},
+				{
+					"productoId": "yogur",
+					"cantidad": 1
+				}
+			],
+			"precio": null,
+			"activa": false
+		}
+	]
+}

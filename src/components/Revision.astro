@@ -41,6 +41,9 @@ import { MARCAS } from '../lib/marcas';
 				</div>
 			</div>
 
+			<!-- Los productos de la marca elegida: se toca y quedan nombre y precio. -->
+			<div id="revision-catalogo" class="catalogo" aria-label="Productos de la marca"></div>
+
 			<label class="campo">
 				<span class="etiqueta">Producto</span>
 				<input name="producto" type="text" list="revision-productos" autocomplete="off" autocapitalize="sentences" placeholder="Ej.: Sardo" required />
@@ -49,14 +52,14 @@ import { MARCAS } from '../lib/marcas';
 
 			<div class="fila">
 				<label class="campo">
-					<span class="etiqueta">Peso</span>
+					<span class="etiqueta" data-etiqueta="peso">Peso</span>
 					<span class="con-unidad">
 						<input name="peso" type="text" inputmode="decimal" autocomplete="off" placeholder="0,000" />
 						<span class="unidad">kg</span>
 					</span>
 				</label>
 				<label class="campo">
-					<span class="etiqueta">Precio por kg</span>
+					<span class="etiqueta" data-etiqueta="precio">Precio por kg</span>
 					<span class="con-unidad">
 						<span class="unidad">$</span>
 						<input name="precio" type="text" inputmode="decimal" autocomplete="off" placeholder="0,00" />
@@ -216,6 +219,37 @@ import { MARCAS } from '../lib/marcas';
 		display: grid;
 		gap: 0.35rem;
 		min-width: 0;
+	}
+
+	.catalogo {
+		display: flex;
+		gap: 0.4rem;
+		overflow-x: auto;
+		overscroll-behavior: contain;
+		min-width: 0;
+	}
+
+	.catalogo:empty {
+		display: none;
+	}
+
+	.catalogo :global(button) {
+		flex: none;
+		min-height: 44px;
+		padding: 0 0.8rem;
+		border: 1.5px solid #d9d9e0;
+		border-radius: 999px;
+		background: #fff;
+		color: var(--texto);
+		font: inherit;
+		font-weight: 700;
+		white-space: nowrap;
+		cursor: pointer;
+	}
+
+	.catalogo :global(button[aria-pressed='true']) {
+		border-color: var(--rosa);
+		color: var(--rosa);
 	}
 
 	.etiqueta {

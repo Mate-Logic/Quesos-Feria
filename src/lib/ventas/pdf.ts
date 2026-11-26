@@ -248,16 +248,16 @@ export function reporteAPdf(reporte: Reporte, emitido = Date.now()): jsPDF {
 					{ content: limpiar(titulo), colSpan: 4 },
 					{ content: limpiar(pesos(total)), styles: { halign: 'right' } },
 				],
-				['Producto', 'Marca', 'Peso', 'Precio por kg', 'Importe'],
+				['Producto', 'Marca', 'Peso / cant.', 'Precio', 'Importe'],
 			],
 			body: venta.productos.map((p) =>
 				[
-					p.producto,
+					p.descuento ? `${p.producto}\nPromo ${p.promo}: - ${pesos(p.descuento)}` : p.producto,
 					marcaPorId(p.marca)?.nombre ?? p.marca,
-					p.pesoKg == null ? '-' : kilos(p.pesoKg),
-					p.precioKg == null ? '-' : pesos(p.precioKg),
+					p.cantidad != null ? `${p.cantidad} u.` : p.pesoKg == null ? '-' : kilos(p.pesoKg),
+					p.precioUnidad != null ? `${pesos(p.precioUnidad)} c/u` : p.precioKg == null ? '-' : `${pesos(p.precioKg)}/kg`,
 					pesos(p.total),
-				].map(limpiar),
+				].map((celda) => celda.split('\n').map(limpiar).join('\n')),
 			),
 			foot: [[{ content: `Cómo pagó: ${pagado.length ? pagado.map(limpiar).join(' + ') : 'sin pago anotado'}${nota}`, colSpan: 5 }]],
 		});
