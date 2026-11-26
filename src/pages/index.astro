@@ -1370,6 +1370,20 @@ import { ruta } from '../lib/rutas';
 		margin-left: auto;
 	}
 
+	/* Flecha para que se note que el día se puede tocar. */
+	.lista :global(.dia-anterior summary::after) {
+		content: '▾';
+		color: var(--texto-suave);
+	}
+
+	.lista :global(.dia-anterior[open] summary::after) {
+		content: '▴';
+	}
+
+	.lista :global(.dia-anterior ul) {
+		list-style: none;
+	}
+
 	.lista :global(.lista-vacia) {
 		padding: 1.5rem 1rem;
 		border: 1.5px dashed #d5d5dd;
