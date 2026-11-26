@@ -340,7 +340,7 @@ function itemVenta(venta: Venta, acciones: AccionesLista): HTMLLIElement {
 		const aviso = document.createElement('div');
 		aviso.className = 'venta-deuda';
 		const texto = document.createElement('span');
-		texto.textContent = `Debe ${pesos(debe)}${venta.nota ? ` · ${venta.nota}` : ''}`;
+		texto.textContent = `Debe ${pesos(debe)}${venta.nota ? ` · ${venta.nota}` : ''}${venta.telefono ? ` · Tel. ${venta.telefono}` : ''}`;
 		const cobrar = document.createElement('button');
 		cobrar.type = 'button';
 		cobrar.textContent = 'Cobrar deuda';

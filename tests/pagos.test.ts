@@ -1,7 +1,12 @@
 import { describe, expect, test } from 'bun:test';
-import { deuda, estadoCobro, pagosFinales, resumenPagos, totalesPorMetodo, type Pago } from '../src/lib/pagos';
+import { deuda, estadoCobro, pagosFinales, resumenPagos, telefonoValido, totalesPorMetodo, type Pago } from '../src/lib/pagos';
 
 const pago = (metodo: Pago['metodo'], monto: number, id = `${metodo}-${monto}`): Pago => ({ id, metodo, monto });
+
+test('el teléfono de quien debe tiene que tener al menos 8 dígitos', () => {
+	for (const bueno of ['2346 123456', '11 2345-6789', '+54 9 (2346) 12-3456']) expect(telefonoValido(bueno)).toBe(true);
+	for (const malo of ['', '1234567', 'Marta', 'Marta 2346123456', '1234567890123456']) expect(telefonoValido(malo)).toBe(false);
+});
 
 describe('estadoCobro', () => {
 	test('sin pagos falta todo', () => {

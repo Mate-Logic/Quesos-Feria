@@ -28,6 +28,13 @@ const TODOS = [...METODOS, { id: 'debe' as const, nombre: 'Queda debiendo' }];
 
 export const nombreMetodo = (id: string) => TODOS.find((m) => m.id === id)?.nombre ?? id;
 
+/** Quien queda debiendo tiene que dejar un teléfono: entre 8 y 15 dígitos, con espacios, guiones, "+" o paréntesis. */
+export function telefonoValido(texto: string): boolean {
+	if (!/^[\d\s()+.-]+$/.test(texto.trim())) return false;
+	const digitos = texto.replace(/\D/g, '').length;
+	return digitos >= 8 && digitos <= 15;
+}
+
 /** Lo que todavía se debe de una venta. */
 export const deuda = (pagos: Pago[] | undefined) =>
 	(pagos ?? []).filter((p) => p.metodo === 'debe').reduce((s, p) => s + centavos(p.monto), 0) / 100;

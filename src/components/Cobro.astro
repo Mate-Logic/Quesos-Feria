@@ -33,10 +33,17 @@ import { METODOS } from '../lib/pagos';
 			<button id="cobro-debe" class="extra" type="button">Queda debiendo</button>
 		</div>
 
-		<label id="cobro-nota-campo" class="nota" hidden>
-			<span id="cobro-nota-etiqueta">Nota</span>
-			<input id="cobro-nota" type="text" autocomplete="off" autocapitalize="sentences" maxlength="140" />
-		</label>
+		<div class="datos">
+			<label id="cobro-nota-campo" class="nota" hidden>
+				<span id="cobro-nota-etiqueta">Nota</span>
+				<input id="cobro-nota" type="text" autocomplete="off" autocapitalize="sentences" maxlength="140" />
+			</label>
+			<!-- Solo si queda debiendo, y es obligatorio. -->
+			<label id="cobro-telefono-campo" class="nota" hidden>
+				<span>Teléfono (obligatorio)</span>
+				<input id="cobro-telefono" type="tel" inputmode="tel" autocomplete="off" maxlength="25" placeholder="2346 123456" />
+			</label>
+		</div>
 
 		<ul id="cobro-pagos" class="pagos" aria-label="Pagos cargados"></ul>
 
@@ -196,7 +203,18 @@ import { METODOS } from '../lib/pagos';
 		color: var(--rosa);
 	}
 
+	.datos {
+		display: flex;
+		gap: 0.45rem;
+	}
+
+	.datos:not(:has(label:not([hidden]))) {
+		display: none;
+	}
+
 	.nota {
+		flex: 1;
+		min-width: 0;
 		display: grid;
 		gap: 0.25rem;
 		font-size: 0.85rem;

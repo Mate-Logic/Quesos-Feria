@@ -119,7 +119,7 @@ import { ruta } from '../lib/rutas';
 	import { abrirCamara, esCelular, hayCamara } from '../lib/ui/camara';
 	import { abrirRevision } from '../lib/ui/revision';
 	import { abrirCobro } from '../lib/ui/cobro';
-	import { deuda, estadoCobro } from '../lib/pagos';
+	import { deuda, estadoCobro, telefonoValido } from '../lib/pagos';
 	import { hora } from '../lib/formato';
 	import {
 		avisar,
@@ -357,10 +357,10 @@ import { ruta } from '../lib/rutas';
 		const cobro = await abrirCobro(venta, { detalle: venta.cliente ? `Venta ${numero} · ${venta.cliente}` : `Venta ${numero}` });
 		if (cobro.accion === 'volver') {
 			// La venta queda pendiente; se guardan los pagos y la nota para retomarlos.
-			const igual = JSON.stringify(cobro.pagos) === JSON.stringify(venta.pagos ?? []) && cobro.nota === (venta.nota ?? '');
+			const igual = JSON.stringify(cobro.pagos) === JSON.stringify(venta.pagos ?? []) && cobro.nota === (venta.nota ?? '') && cobro.telefono === (venta.telefono ?? '');
 			if (igual) return;
 			await actualizarVenta(venta.id, (actual) =>
-				actual.estado === 'abierta' ? { ...actual, pagos: cobro.pagos, nota: cobro.nota || undefined } : null,
+				actual.estado === 'abierta' ? { ...actual, pagos: cobro.pagos, nota: cobro.nota || undefined, telefono: cobro.telefono || undefined } : null,
 			);
 			await refrescar();
 			avisar('La venta quedó pendiente de cobro');
@@ -368,9 +368,10 @@ import { ruta } from '../lib/rutas';
 		}
 		const actualizada = await actualizarVenta(venta.id, (actual) => {
 			const total = actual.productos.reduce((s, p) => s + p.total, 0);
-			const cubre = estadoCobro(total, cobro.pagos).completo;
+			// Sin teléfono no se puede dejar nada debiendo.
+			const cubre = estadoCobro(total, cobro.pagos).completo && (!deuda(cobro.pagos) || telefonoValido(cobro.telefono));
 			return actual.estado === 'abierta' && actual.productos.length && cubre
-				? { ...actual, pagos: cobro.pagos, nota: cobro.nota || undefined, estado: 'finalizada', finalizada: Date.now() }
+				? { ...actual, pagos: cobro.pagos, nota: cobro.nota || undefined, telefono: cobro.telefono || undefined, estado: 'finalizada', finalizada: Date.now() }
 				: null;
 		});
 		if (actualizada?.estado !== 'finalizada') {
@@ -390,8 +391,8 @@ import { ruta } from '../lib/rutas';
 		const detalle = venta.nota || venta.cliente || `Venta de las ${hora(venta.finalizada ?? venta.creada)}`;
 		const cobro = await abrirCobro(venta, { detalle, deuda: debe });
 		if (cobro.accion === 'volver') {
-			if (cobro.nota === (venta.nota ?? '')) return;
-			await actualizarVenta(venta.id, (actual) => ({ ...actual, nota: cobro.nota || undefined }));
+			if (cobro.nota === (venta.nota ?? '') && cobro.telefono === (venta.telefono ?? '')) return;
+			await actualizarVenta(venta.id, (actual) => ({ ...actual, nota: cobro.nota || undefined, telefono: cobro.telefono || undefined }));
 			await refrescar();
 			return;
 		}
@@ -404,6 +405,7 @@ import { ruta } from '../lib/rutas';
 							...cobro.pagos.map((p) => (p.metodo === 'debe' ? p : { ...p, momento: Date.now() })),
 						],
 						nota: cobro.nota || undefined,
+						telefono: cobro.telefono || undefined,
 					}
 				: null,
 		);

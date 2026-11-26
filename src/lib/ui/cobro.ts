@@ -1,7 +1,7 @@
 // Controla la hoja de cobro de src/components/Cobro.astro.
 
 import { leerNumero, numeroEditable, pesos } from '../formato';
-import { estadoCobro, nombreMetodo, pagosFinales, type MetodoPago, type Pago } from '../pagos';
+import { estadoCobro, nombreMetodo, pagosFinales, telefonoValido, type MetodoPago, type Pago } from '../pagos';
 import { nuevoId, type Venta } from '../ventas/db';
 
 export interface ResultadoCobro {
@@ -9,6 +9,7 @@ export interface ResultadoCobro {
 	accion: 'confirmar' | 'volver';
 	pagos: Pago[];
 	nota: string;
+	telefono: string;
 }
 
 export interface OpcionesCobro {
@@ -33,6 +34,8 @@ export function abrirCobro(venta: Venta, opciones: OpcionesCobro): Promise<Resul
 	const campoNota = document.getElementById('cobro-nota-campo')!;
 	const etiquetaNota = document.getElementById('cobro-nota-etiqueta')!;
 	const nota = document.getElementById('cobro-nota') as HTMLInputElement;
+	const campoTelefono = document.getElementById('cobro-telefono-campo')!;
+	const telefono = document.getElementById('cobro-telefono') as HTMLInputElement;
 	const metodos = form.querySelectorAll<HTMLButtonElement>('[data-metodo]');
 
 	const saldando = opciones.deuda != null;
@@ -43,17 +46,20 @@ export function abrirCobro(venta: Venta, opciones: OpcionesCobro): Promise<Resul
 	detalle.textContent = opciones.detalle;
 	totalTexto.textContent = pesos(total);
 	nota.value = venta.nota ?? '';
+	telefono.value = venta.telefono ?? '';
 	confirmar.textContent = saldando ? 'Confirmar pago' : 'Confirmar cobro';
 
 	const hayDeuda = () => pagos.some((p) => p.metodo === 'debe');
-	// Si alguien queda debiendo, hay que anotar quién es para poder cobrarle después.
+	// Si alguien queda debiendo, hay que anotar quién es y su teléfono, sí o sí.
 	const faltaNota = () => hayDeuda() && !nota.value.trim();
+	const faltaTelefono = () => hayDeuda() && !telefonoValido(telefono.value);
+	const faltanDatos = () => faltaNota() || faltaTelefono();
 
 	function mostrarNota(visible: boolean) {
 		campoNota.hidden = !visible;
 		botonNota.setAttribute('aria-pressed', String(visible));
-		etiquetaNota.textContent = hayDeuda() ? '¿Quién debe? Nombre y teléfono' : 'Nota';
-		nota.placeholder = hayDeuda() ? 'Ej.: Marta, 11 2345-6789' : 'Algo para recordar de este cobro';
+		etiquetaNota.textContent = hayDeuda() ? '¿Quién debe?' : 'Nota';
+		nota.placeholder = hayDeuda() ? 'Nombre' : 'Algo para recordar de este cobro';
 	}
 
 	function actualizarEstado() {
@@ -67,6 +73,9 @@ export function abrirCobro(venta: Venta, opciones: OpcionesCobro): Promise<Resul
 		} else if (faltaNota()) {
 			delete estado.dataset.tipo;
 			estado.textContent = 'Anotá quién queda debiendo';
+		} else if (faltaTelefono()) {
+			delete estado.dataset.tipo;
+			estado.textContent = 'Anotá su teléfono';
 		} else {
 			estado.dataset.tipo = 'ok';
 			estado.textContent = e.vuelto > 0 ? `Vuelto: ${pesos(e.vuelto)}` : '✓ Está todo cobrado';
@@ -74,7 +83,10 @@ export function abrirCobro(venta: Venta, opciones: OpcionesCobro): Promise<Resul
 		botonDebe.setAttribute('aria-pressed', String(hayDeuda()));
 		if (faltaNota()) nota.setAttribute('aria-invalid', 'true');
 		else nota.removeAttribute('aria-invalid');
-		confirmar.disabled = !e.completo || faltaNota();
+		campoTelefono.hidden = !hayDeuda();
+		if (faltaTelefono()) telefono.setAttribute('aria-invalid', 'true');
+		else telefono.removeAttribute('aria-invalid');
+		confirmar.disabled = !e.completo || faltanDatos();
 	}
 
 	function fila(pago: Pago): HTMLLIElement {
@@ -137,6 +149,7 @@ export function abrirCobro(venta: Venta, opciones: OpcionesCobro): Promise<Resul
 	const alTocarDebe = () => {
 		if (!hayDeuda()) agregar('debe');
 		else if (!nota.value.trim()) nota.focus();
+		else if (faltaTelefono()) telefono.focus();
 	};
 	const alTocarNota = () => {
 		mostrarNota(campoNota.hidden === true);
@@ -146,6 +159,7 @@ export function abrirCobro(venta: Venta, opciones: OpcionesCobro): Promise<Resul
 	botonDebe.addEventListener('click', alTocarDebe);
 	botonNota.addEventListener('click', alTocarNota);
 	nota.addEventListener('input', actualizarEstado);
+	telefono.addEventListener('input', actualizarEstado);
 
 	mostrarNota(nota.value.trim() !== '' || hayDeuda());
 	dibujar();
@@ -160,6 +174,7 @@ export function abrirCobro(venta: Venta, opciones: OpcionesCobro): Promise<Resul
 			botonDebe.removeEventListener('click', alTocarDebe);
 			botonNota.removeEventListener('click', alTocarNota);
 			nota.removeEventListener('input', actualizarEstado);
+			telefono.removeEventListener('input', actualizarEstado);
 			form.removeEventListener('submit', alEnviar);
 			volver.removeEventListener('click', alVolver);
 			dialogo.removeEventListener('close', alVolver);
@@ -168,12 +183,12 @@ export function abrirCobro(venta: Venta, opciones: OpcionesCobro): Promise<Resul
 		};
 		const alEnviar = (e: Event) => {
 			e.preventDefault();
-			if (!estadoCobro(total, pagos).completo || faltaNota()) return;
-			cerrarCon({ accion: 'confirmar', pagos: pagosFinales(total, pagos), nota: nota.value.trim() });
+			if (!estadoCobro(total, pagos).completo || faltanDatos()) return;
+			cerrarCon({ accion: 'confirmar', pagos: pagosFinales(total, pagos), nota: nota.value.trim(), telefono: telefono.value.trim() });
 		};
 		// "Volver", la tecla atrás o Escape: queda pendiente con lo que se cargó.
 		const alVolver = () =>
-			cerrarCon({ accion: 'volver', pagos: pagos.filter((p) => p.monto > 0), nota: nota.value.trim() });
+			cerrarCon({ accion: 'volver', pagos: pagos.filter((p) => p.monto > 0), nota: nota.value.trim(), telefono: telefono.value.trim() });
 		form.addEventListener('submit', alEnviar);
 		volver.addEventListener('click', alVolver);
 		dialogo.addEventListener('close', alVolver);

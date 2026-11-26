@@ -105,11 +105,11 @@ export function reporteAPdf(reporte: Reporte, emitido = Date.now()): jsPDF {
 	if (reporte.deudas.length) {
 		seccion(
 			'Quedaron debiendo',
-			['Cliente', 'Nota', 'Hora', 'Debe'],
+			['Cliente', 'Teléfono', 'Nota', 'Hora', 'Debe'],
 			reporte.deudas.map(({ venta, monto }) =>
-				[venta.cliente || 'Sin nombre', venta.nota ?? '', hora(venta.finalizada ?? venta.creada), pesos(monto)].map(limpiar),
+				[venta.cliente || 'Sin nombre', venta.telefono ?? 'Sin anotar', venta.nota ?? '', hora(venta.finalizada ?? venta.creada), pesos(monto)].map(limpiar),
 			),
-			[3],
+			[4],
 		);
 	}
 
@@ -227,7 +227,7 @@ export function reporteAPdf(reporte: Reporte, emitido = Date.now()): jsPDF {
 			if (p.metodo === 'debe') return `Quedó debiendo ${pesos(p.monto)}`;
 			return `${nombreMetodo(p.metodo)} ${pesos(p.monto)}${p.momento ? ` (cobrado ${diaYHora(p.momento)})` : ''}`;
 		});
-		const nota = venta.nota ? `\nNota: ${limpiar(venta.nota)}` : '';
+		const nota = `${venta.nota ? `\nNota: ${limpiar(venta.nota)}` : ''}${venta.telefono ? `\nTeléfono: ${limpiar(venta.telefono)}` : ''}`;
 		autoTable(doc, {
 			startY: y,
 			margin: { left: MARGEN, right: MARGEN, bottom: 18, top: 18 },

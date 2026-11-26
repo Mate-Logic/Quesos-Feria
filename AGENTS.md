@@ -131,6 +131,10 @@ La app la usan personas mayores en el puesto, con las manos ocupadas. Tiene que 
 - Una tabla o venta que entra en una hoja no se corta entre dos.
 - Antes de darlo por terminado, se renderiza en grises (`pdftoppm -gray`) y se revisan todas las hojas.
 
+### 10. Deudas: siempre con teléfono
+
+- Nadie queda debiendo sin nombre y teléfono: la venta no se puede confirmar si faltan.
+
 ## Development
 
 When starting the dev server, use background mode:

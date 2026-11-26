@@ -31,8 +31,10 @@ export interface Venta {
 	 * que quedó pendiente; las ventas viejas pueden no tenerlo.
 	 */
 	pagos?: Pago[];
-	/** Nota del cobro, por ejemplo quién quedó debiendo y su teléfono. */
+	/** Nota del cobro, por ejemplo quién quedó debiendo. */
 	nota?: string;
+	/** Teléfono de quien quedó debiendo; las deudas viejas no lo tienen. */
+	telefono?: string;
 }
 
 /** Lo último que se sabe de cada producto, para reconocerlo y completar el próximo ticket. */
