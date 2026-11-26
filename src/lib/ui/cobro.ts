@@ -75,7 +75,7 @@ export function abrirCobro(venta: Venta, opciones: OpcionesCobro): Promise<Resul
 			estado.textContent = 'Anotá quién queda debiendo';
 		} else if (faltaTelefono()) {
 			delete estado.dataset.tipo;
-			estado.textContent = 'Anotá su teléfono';
+			estado.textContent = 'Anotá su celular';
 		} else {
 			estado.dataset.tipo = 'ok';
 			estado.textContent = e.vuelto > 0 ? `Vuelto: ${pesos(e.vuelto)}` : '✓ Está todo cobrado';

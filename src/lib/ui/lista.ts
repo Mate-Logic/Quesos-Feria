@@ -2,7 +2,7 @@
 
 import { diaYHora, hora, inicioDelDia, kilos, nombreDelDia, pesos } from '../formato';
 import { MARCAS, marcaPorId } from '../marcas';
-import { deuda, estadoCobro, nombreMetodo, totalesPorMetodo } from '../pagos';
+import { celularInternacional, deuda, enlaceWhatsApp, estadoCobro, nombreMetodo, totalesPorMetodo } from '../pagos';
 import { ruta } from '../rutas';
 import type { ProductoVenta, Venta } from '../ventas/db';
 
@@ -345,7 +345,30 @@ function itemVenta(venta: Venta, acciones: AccionesLista): HTMLLIElement {
 		cobrar.type = 'button';
 		cobrar.textContent = 'Cobrar deuda';
 		cobrar.addEventListener('click', () => acciones.alSaldar(venta));
-		aviso.append(texto, cobrar);
+		const botones = document.createElement('div');
+		botones.className = 'deuda-botones';
+		// Las deudas viejas pueden no tener celular: se agrega desde "Cobrar deuda".
+		const numero = celularInternacional(venta.telefono ?? '');
+		if (numero) {
+			const quien = venta.nota || venta.cliente;
+			const mensaje = `Hola${quien ? ` ${quien}` : ''}, te escribimos de Lácteos Huella Pampa (Mercados Bonaerenses). Quedó pendiente el pago de ${pesos(debe)} de tu compra del ${diaYHora(venta.finalizada ?? venta.creada)}. ¡Gracias!`;
+			const whatsapp = document.createElement('a');
+			whatsapp.textContent = 'WhatsApp';
+			whatsapp.href = enlaceWhatsApp(venta.telefono!, mensaje)!;
+			whatsapp.target = '_blank';
+			whatsapp.rel = 'noopener noreferrer';
+			whatsapp.addEventListener('click', (evento) => {
+				if (navigator.onLine) return;
+				evento.preventDefault();
+				avisar('Sin señal no se puede abrir WhatsApp. Probá más tarde o llamá.');
+			});
+			const llamar = document.createElement('a');
+			llamar.textContent = 'Llamar';
+			llamar.href = `tel:+${numero}`;
+			botones.append(whatsapp, llamar);
+		}
+		botones.append(cobrar);
+		aviso.append(texto, botones);
 		extras.push(aviso);
 	} else if (venta.nota) {
 		const nota = document.createElement('p');

@@ -133,7 +133,8 @@ La app la usan personas mayores en el puesto, con las manos ocupadas. Tiene que 
 
 ### 10. Deudas: siempre con teléfono
 
-- Nadie queda debiendo sin nombre y teléfono: la venta no se puede confirmar si faltan.
+- Nadie queda debiendo sin nombre y celular: la venta no se puede confirmar si faltan. Sin característica se asume 2346 (Chivilcoy).
+- Cada deuda tiene botones para escribirle por WhatsApp (mensaje ya redactado, lo envía la persona) y para llamar.
 
 ## Development
 

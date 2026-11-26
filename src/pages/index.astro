@@ -679,10 +679,8 @@ import { ruta } from '../lib/rutas';
 	}
 
 	.lista :global(.venta-deuda) {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 0.6rem;
+		display: grid;
+		gap: 0.5rem;
 		margin-top: 0.4rem;
 		padding: 0.5rem 0.6rem;
 		border-radius: 12px;
@@ -692,17 +690,34 @@ import { ruta } from '../lib/rutas';
 		font-weight: 600;
 	}
 
-	.lista :global(.venta-deuda button) {
-		flex: none;
-		min-height: 44px;
-		padding: 0 0.9rem;
-		border: 0;
+	.lista :global(.deuda-botones) {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.4rem;
+	}
+
+	.lista :global(.deuda-botones a),
+	.lista :global(.deuda-botones button) {
+		flex: 1 1 auto;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		min-height: 48px;
+		padding: 0 0.7rem;
+		border: 1.5px solid #b3125a;
 		border-radius: 999px;
-		background: var(--degrade);
-		color: #fff;
+		background: #fff;
+		color: #b3125a;
 		font: inherit;
 		font-weight: 700;
+		text-decoration: none;
 		cursor: pointer;
+	}
+
+	.lista :global(.deuda-botones button) {
+		border: 0;
+		background: var(--degrade);
+		color: #fff;
 	}
 
 	/* --- Ventas abiertas: hojas que ocupan todo el espacio libre --- */

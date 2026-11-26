@@ -28,11 +28,35 @@ const TODOS = [...METODOS, { id: 'debe' as const, nombre: 'Queda debiendo' }];
 
 export const nombreMetodo = (id: string) => TODOS.find((m) => m.id === id)?.nombre ?? id;
 
-/** Quien queda debiendo tiene que dejar un teléfono: entre 8 y 15 dígitos, con espacios, guiones, "+" o paréntesis. */
-export function telefonoValido(texto: string): boolean {
-	if (!/^[\d\s()+.-]+$/.test(texto.trim())) return false;
-	const digitos = texto.replace(/\D/g, '').length;
-	return digitos >= 8 && digitos <= 15;
+/** Chivilcoy: es de donde son casi todos los clientes. */
+const CARACTERISTICA_LOCAL = '2346';
+
+/**
+ * El celular en formato internacional (solo dígitos), como lo pide WhatsApp, o
+ * `null` si no alcanza para ubicarlo. Se aceptan "2346 123456", "02346 15 123456"
+ * o "+54 9 2346 123456" y quedan en "5492346123456". Sin característica (6
+ * dígitos) se asume Chivilcoy. Un número de otro país se escribe con "+".
+ */
+export function celularInternacional(texto: string): string | null {
+	const limpio = texto.trim();
+	if (!/^\+?[\d\s().-]+$/.test(limpio)) return null;
+	let n = limpio.replace(/\D/g, '');
+	if (limpio.startsWith('+') && !n.startsWith('54')) return n.length >= 8 && n.length <= 15 ? n : null;
+	// Ninguna característica argentina empieza con 54: es el código del país.
+	if (n.startsWith('54')) n = n.slice(2).replace(/^9/, '');
+	n = n.replace(/^0/, '');
+	if (/^(15)?\d{6}$/.test(n)) n = CARACTERISTICA_LOCAL + n.slice(-6);
+	// "Característica 15 número": el 15 no va. La característica tiene 2, 3 o 4 dígitos.
+	if (n.length === 12) n = n.replace(/^(11|[23]\d{2,3}?)15/, '$1');
+	return /^(11|[23]\d)\d{8}$/.test(n) ? `549${n}` : null;
+}
+
+export const telefonoValido = (texto: string) => celularInternacional(texto) !== null;
+
+/** Abre el chat con el mensaje ya escrito; lo envía la persona. */
+export function enlaceWhatsApp(telefono: string, mensaje: string): string | null {
+	const numero = celularInternacional(telefono);
+	return numero && `https://wa.me/${numero}?text=${encodeURIComponent(mensaje)}`;
 }
 
 /** Lo que todavía se debe de una venta. */

@@ -1,9 +1,23 @@
 import { describe, expect, test } from 'bun:test';
-import { deuda, estadoCobro, pagosFinales, resumenPagos, telefonoValido, totalesPorMetodo, type Pago } from '../src/lib/pagos';
+import { deuda, estadoCobro, pagosFinales, resumenPagos, celularInternacional, enlaceWhatsApp, telefonoValido, totalesPorMetodo, type Pago } from '../src/lib/pagos';
 
 const pago = (metodo: Pago['metodo'], monto: number, id = `${metodo}-${monto}`): Pago => ({ id, metodo, monto });
 
-test('el teléfono de quien debe tiene que tener al menos 8 dígitos', () => {
+test('arma el número como lo pide WhatsApp', () => {
+	for (const texto of ['2346 123456', '02346 15 123456', '+54 9 2346 12-3456', '54 2346 123456']) {
+		expect(celularInternacional(texto)).toBe('5492346123456');
+	}
+	expect(celularInternacional('011 15 2345-6789')).toBe('5491123456789');
+	expect(celularInternacional('+598 99 123 456')).toBe('59899123456');
+	// Sin característica se asume Chivilcoy.
+	expect(celularInternacional('123456')).toBe('5492346123456');
+	expect(celularInternacional('15 123456')).toBe('5492346123456');
+	// Un número incompleto no sirve.
+	expect(celularInternacional('15 2345 6789')).toBeNull();
+	expect(enlaceWhatsApp('2346 123456', 'Hola Marta')).toBe('https://wa.me/5492346123456?text=Hola%20Marta');
+});
+
+test('el celular de quien debe tiene que estar completo', () => {
 	for (const bueno of ['2346 123456', '11 2345-6789', '+54 9 (2346) 12-3456']) expect(telefonoValido(bueno)).toBe(true);
 	for (const malo of ['', '1234567', 'Marta', 'Marta 2346123456', '1234567890123456']) expect(telefonoValido(malo)).toBe(false);
 });
