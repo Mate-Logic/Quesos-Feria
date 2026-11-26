@@ -10,6 +10,8 @@ export interface AccionesLista {
 	alEditar(venta: Venta, producto: ProductoVenta): void;
 	alBorrar(venta: Venta): void;
 	alSaldar(venta: Venta): void;
+	/** Si está, cada día muestra un botón para sacar su reporte en PDF. */
+	alReportar?(dia: number): void;
 }
 
 export interface AccionesVentasAbiertas {
@@ -304,6 +306,11 @@ export function dibujarLista(
 			suma.className = 'dia-total';
 			suma.textContent = pesos(delDia.reduce((s, v) => s + totalVenta(v), 0));
 			cabecera.append(nombre, suma);
+			if (acciones.alReportar) {
+				const reporte = boton('dia-reporte', 'PDF', `Reporte en PDF: ${nombreDelDia(dia)}`);
+				reporte.addEventListener('click', () => acciones.alReportar!(dia));
+				cabecera.append(reporte);
+			}
 			const lista = document.createElement('ul');
 			lista.className = 'historial-ventas';
 			lista.append(...delDia.map((v) => itemVenta(v, acciones)));

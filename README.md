@@ -14,6 +14,7 @@ Se usa desde el celular, en el puesto, muchas veces sin señal. Por eso es una *
 - **Lectura sin conexión**: el OCR ([Tesseract.js](https://github.com/naptha/tesseract.js)) corre en el celular. Lee producto, peso, precio por kilo y total, y muestra todo para revisarlo antes de guardar.
 - **Varias marcas**: en el puesto venden Huella Pampa, Oliverio, Mamá Mecha y Milkey, cada una con su balanza y su formato de ticket. Cada venta se anota con su marca.
 - **Lista de ventas** agrupada por día, con el total del día y por marca. Se pueden editar, y borrar con opción de deshacer.
+- **Reporte en PDF** de un día, para imprimir: total, cómo se cobró, quiénes quedaron debiendo, totales por marca y por producto, y el detalle de cada venta. El botón **PDF** está en *Ventas del día* (y en cada día anterior); el archivo se comparte o se descarga, y se arma en el celular sin conexión.
 - **Exportar** las ventas a CSV (para Excel o Google Sheets), compartiéndolas o descargándolas.
 
 ## Tecnologías
@@ -114,7 +115,7 @@ Las fotos de `fotos_prueba/` son tickets reales con los valores que se tienen qu
 │   │   └── 404.astro               # página de respaldo offline
 │   ├── lib/
 │   │   ├── tickets/                # lectura de tickets: imagen, OCR y parser
-│   │   ├── ventas/                 # IndexedDB y exportación a CSV
+│   │   ├── ventas/                 # IndexedDB, exportación a CSV y reporte en PDF
 │   │   ├── ui/                     # cámara, hoja de revisión y lista
 │   │   ├── formato.ts              # números y fechas en formato argentino
 │   │   ├── rutas.ts                # arma las rutas con el base de GitHub Pages

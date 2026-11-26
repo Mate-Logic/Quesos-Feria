@@ -4,6 +4,7 @@
 import { marcaPorId } from '../marcas';
 import { nombreMetodo } from '../pagos';
 import type { Venta } from './db';
+import { armarReporte } from './reporte';
 
 const FECHA = new Intl.DateTimeFormat('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 const HORA = new Intl.DateTimeFormat('es-AR', { hour: '2-digit', minute: '2-digit' });
@@ -41,13 +42,28 @@ function celda(valor: string): string {
 	return /[";\r\n]/.test(valor) ? `"${valor.replace(/"/g, '""')}"` : valor;
 }
 
-/** Comparte el CSV (WhatsApp, mail, Drive...) si el celular lo permite; si no, lo descarga. */
 export async function exportarVentas(ventas: Venta[]): Promise<void> {
 	const fecha = new Date().toISOString().slice(0, 10);
 	const archivo = new File([ventasACsv(ventas)], `ventas-feria-${fecha}.csv`, { type: 'text/csv' });
+	await compartirArchivo(archivo, 'Ventas de feria');
+}
+
+/** Arma el PDF del día para imprimir y lo comparte o descarga. */
+export async function exportarReporte(ventas: Venta[], dia: number): Promise<void> {
+	const { reporteAPdf } = await import('./pdf');
+	const reporte = armarReporte(ventas, dia);
+	// La fecha del nombre es la local: con toISOString una feria de noche quedaría con la del día siguiente.
+	const d = new Date(reporte.dia);
+	const fecha = [d.getFullYear(), d.getMonth() + 1, d.getDate()].map((n) => String(n).padStart(2, '0')).join('-');
+	const archivo = new File([reporteAPdf(reporte).output('blob')], `reporte-ventas-${fecha}.pdf`, { type: 'application/pdf' });
+	await compartirArchivo(archivo, 'Reporte de ventas');
+}
+
+/** Comparte el archivo (WhatsApp, mail, Drive, imprimir...) si el celular lo permite; si no, lo descarga. */
+async function compartirArchivo(archivo: File, titulo: string): Promise<void> {
 	if (navigator.canShare?.({ files: [archivo] })) {
 		try {
-			await navigator.share({ files: [archivo], title: 'Ventas de feria' });
+			await navigator.share({ files: [archivo], title: titulo });
 			return;
 		} catch (error) {
 			if ((error as DOMException).name === 'AbortError') return;

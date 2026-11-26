@@ -69,10 +69,16 @@ import { ruta } from '../lib/rutas';
 		<section class="ventas" aria-labelledby="ventas-titulo">
 			<header class="ventas-cabecera">
 				<h2 id="ventas-titulo">Ventas de hoy</h2>
+				<div class="ventas-botones">
+				<button id="btn-reporte" class="exportar" type="button" disabled aria-label="Reporte de hoy en PDF">
+					<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 9V4h10v5M7 18H4v-7h16v7h-3M7 14h10v6H7z"></path></svg>
+					PDF
+				</button>
 				<button id="btn-exportar" class="exportar" type="button" disabled>
 					<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"></path></svg>
 					Exportar
 				</button>
+				</div>
 			</header>
 			<div id="lista-ventas" class="lista"></div>
 		</section>
@@ -139,7 +145,7 @@ import { ruta } from '../lib/rutas';
 		type ProductoVenta,
 		type Venta,
 	} from '../lib/ventas/db';
-	import { exportarVentas } from '../lib/ventas/exportar';
+	import { exportarReporte, exportarVentas } from '../lib/ventas/exportar';
 
 	const lista = document.getElementById('lista-ventas')!;
 	const abiertas = document.getElementById('carrusel-abiertas')!;
@@ -151,6 +157,7 @@ import { ruta } from '../lib/rutas';
 	const inputCamaraSistema = document.getElementById('input-camara-sistema') as HTMLInputElement;
 	const btnManual = document.getElementById('btn-manual') as HTMLButtonElement;
 	const btnExportar = document.getElementById('btn-exportar') as HTMLButtonElement;
+	const btnReporte = document.getElementById('btn-reporte') as HTMLButtonElement;
 	const listaAnteriores = document.getElementById('lista-anteriores')!;
 	const anterioresPanel = document.getElementById('anteriores-panel') as HTMLDetailsElement;
 	const contenido = document.getElementById('contenido')!;
@@ -237,11 +244,12 @@ import { ruta } from '../lib/rutas';
 			alSaldar: (venta: Venta) => void ejecutar(() => saldar(venta), 'No se pudo registrar el pago. Intentá de nuevo.'),
 		};
 		dibujarLista(lista, deHoy, accionesLista, 'Todavía no finalizaste ventas hoy. Las ventas aparecen acá cuando las cobrás.');
-		dibujarLista(listaAnteriores, anteriores, accionesLista);
+		dibujarLista(listaAnteriores, anteriores, { ...accionesLista, alReportar: reportar });
 		anterioresPanel.hidden = anteriores.length === 0;
 		dibujarCanceladas(listaCanceladas, canceladas);
 		canceladasPanel.hidden = canceladas.length === 0;
 		btnExportar.disabled = finalizadas.length === 0;
+		btnReporte.disabled = deHoy.length === 0;
 	}
 
 	async function ejecutar(accion: () => Promise<void>, mensaje: string) {
@@ -251,6 +259,10 @@ import { ruta } from '../lib/rutas';
 			console.error(error);
 			avisar(mensaje);
 		}
+	}
+
+	function reportar(dia: number) {
+		void ejecutar(() => exportarReporte(ventas, dia), 'No se pudo armar el PDF. Intentá de nuevo.');
 	}
 
 	async function guardar(venta: Venta, mensaje: string, marca?: string) {
@@ -473,6 +485,8 @@ import { ruta } from '../lib/rutas';
 	btnExportar.addEventListener('click', () =>
 		void ejecutar(() => exportarVentas(ventas.filter((v) => v.estado === 'finalizada')), 'No se pudo exportar las ventas.'),
 	);
+
+	btnReporte.addEventListener('click', () => reportar(Date.now()));
 
 	// Al pasar la medianoche (feria nocturna) o volver a la app, el resumen de "hoy" se actualiza.
 	document.addEventListener('visibilitychange', () => {
@@ -1034,7 +1048,13 @@ import { ruta } from '../lib/rutas';
 		font-size: 1.15rem;
 	}
 
+	.ventas-botones {
+		display: flex;
+		gap: 0.5rem;
+	}
+
 	.exportar {
+		min-height: 44px;
 		display: inline-flex;
 		align-items: center;
 		gap: 0.35rem;
@@ -1071,11 +1091,29 @@ import { ruta } from '../lib/rutas';
 
 	.lista :global(.dia h3) {
 		display: flex;
+		align-items: center;
 		justify-content: space-between;
+		gap: 0.6rem;
 		padding: 0 0.25rem 0.4rem;
 		font-size: 0.85rem;
 		font-weight: 600;
 		color: var(--texto-suave);
+	}
+
+	.lista :global(.dia-total) {
+		margin-left: auto;
+	}
+
+	.lista :global(.dia-reporte) {
+		min-width: 56px;
+		min-height: 44px;
+		border: 1.5px solid var(--celeste);
+		border-radius: 999px;
+		background: none;
+		color: #00838f;
+		font: inherit;
+		font-weight: 700;
+		cursor: pointer;
 	}
 
 	.lista :global(.dia ul) {
