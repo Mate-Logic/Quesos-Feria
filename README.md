@@ -6,7 +6,7 @@ Aplicación para anotar las ventas de **Lácteos Huella Pampa**, productor de qu
 
 Se usa desde el celular, en el puesto, muchas veces sin señal. Por eso es una **Progressive Web App (PWA) instalable que funciona sin conexión**: después de abrirla una vez con internet, se puede usar en modo avión.
 
-> **Estado:** en desarrollo. Ya se pueden anotar ventas leyendo la foto del ticket de la balanza (o a mano), ver el resumen del día y exportar todo a CSV, sin conexión.
+> **Estado:** en desarrollo. Ya se pueden anotar ventas leyendo la foto del ticket de la balanza (o a mano), ver el resumen del día y compartir su reporte en PDF, sin conexión.
 
 ## Qué hace
 
@@ -14,8 +14,7 @@ Se usa desde el celular, en el puesto, muchas veces sin señal. Por eso es una *
 - **Lectura sin conexión**: el OCR ([Tesseract.js](https://github.com/naptha/tesseract.js)) corre en el celular. Lee producto, peso, precio por kilo y total, y muestra todo para revisarlo antes de guardar.
 - **Varias marcas**: en el puesto venden Huella Pampa, Oliverio, Mamá Mecha y Milkey, cada una con su balanza y su formato de ticket. Cada venta se anota con su marca.
 - **Lista de ventas** agrupada por día, con el total del día y por marca. Se pueden editar, y borrar con opción de deshacer.
-- **Reporte en PDF** de un día, para imprimir: total, cómo se cobró, quiénes quedaron debiendo, totales por marca y por producto, y el detalle de cada venta. El botón **PDF** está en *Ventas del día* (y en cada día anterior); el archivo se comparte o se descarga, y se arma en el celular sin conexión.
-- **Exportar** las ventas a CSV (para Excel o Google Sheets), compartiéndolas o descargándolas.
+- **Reporte en PDF** de un día, para mandar por WhatsApp e imprimir: total, cómo se cobró, quiénes quedaron debiendo, totales por marca y por producto, y el detalle de cada venta. El botón **Compartir PDF** está en *Ventas del día* y cada día anterior tiene el suyo. El PDF se arma en el celular, sin conexión; si el navegador no puede compartir archivos, se descarga.
 
 ## Tecnologías
 
@@ -55,7 +54,7 @@ Como el sitio vive en la subcarpeta `/Quesos-Feria/` (el `base` de `astro.config
 
 Para usarla en la feria: abrirla una vez con internet en el celular, esperar a que cargue y agregarla a la pantalla de inicio (*Instalar app* o *Agregar a pantalla de inicio*). Desde ahí funciona sin señal.
 
-Las ventas se guardan solo en ese celular. Conviene exportarlas (botón **Exportar**) al terminar cada feria y mandarse el CSV, porque si el celular se pierde o se resetea, las ventas se pierden con él.
+Las ventas se guardan solo en ese celular. Conviene mandarse el PDF al terminar cada feria, porque si el celular se pierde o se resetea, las ventas se pierden con él (el PDF sirve como registro, pero no se puede volver a cargar en la app).
 
 ## Probar el modo sin conexión
 
@@ -115,7 +114,7 @@ Las fotos de `fotos_prueba/` son tickets reales con los valores que se tienen qu
 │   │   └── 404.astro               # página de respaldo offline
 │   ├── lib/
 │   │   ├── tickets/                # lectura de tickets: imagen, OCR y parser
-│   │   ├── ventas/                 # IndexedDB, exportación a CSV y reporte en PDF
+│   │   ├── ventas/                 # IndexedDB y reporte en PDF
 │   │   ├── ui/                     # cámara, hoja de revisión y lista
 │   │   ├── formato.ts              # números y fechas en formato argentino
 │   │   ├── rutas.ts                # arma las rutas con el base de GitHub Pages

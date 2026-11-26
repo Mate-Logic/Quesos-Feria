@@ -307,7 +307,7 @@ export function dibujarLista(
 			suma.textContent = pesos(delDia.reduce((s, v) => s + totalVenta(v), 0));
 			cabecera.append(nombre, suma);
 			if (acciones.alReportar) {
-				const reporte = boton('dia-reporte', 'PDF', `Reporte en PDF: ${nombreDelDia(dia)}`);
+				const reporte = boton('dia-reporte', 'PDF', `Compartir el reporte en PDF: ${nombreDelDia(dia)}`);
 				reporte.addEventListener('click', () => acciones.alReportar!(dia));
 				cabecera.append(reporte);
 			}
